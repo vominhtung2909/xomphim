@@ -1,0 +1,8 @@
+{
+  "name": "Remix Xóm Phim",
+  "description": "Website xem phim trực tuyến hiện đại phong cách Netflix tràn viền 100vw, tích hợp NguonC API, Hero Carousel 10 phim hot, danh mục phim vuốt ngang, tìm kiếm thông minh và phát video trực tiếp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
