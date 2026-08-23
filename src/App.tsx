@@ -1,22 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  Film,
-  Sparkles,
-  Flame,
-  Tv,
-  Clapperboard,
-  Compass,
-  Globe,
-  ArrowUp,
-  Code2,
-  RefreshCw,
-  Search,
-  Bookmark,
-  History,
-  Play
+  ArrowUp
 } from 'lucide-react';
 import {
-  CategoryOption,
   MovieDetail,
   MovieItem,
   PaginateInfo,
@@ -44,6 +31,10 @@ import { FavoritesHistoryModal } from './components/FavoritesHistoryModal';
 import { SourceCodeModal } from './components/SourceCodeModal';
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   // Navigation & View states
   const [viewMode, setViewMode] = useState<ViewMode>('home');
   const [activeFilter, setActiveFilter] = useState<{
@@ -68,7 +59,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Watch view states
-  const [selectedMovieSlug, setSelectedMovieSlug] = useState<string | null>(null);
   const [movieDetail, setMovieDetail] = useState<MovieDetail | null>(null);
   const [relatedMovies, setRelatedMovies] = useState<MovieItem[]>([]);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
@@ -103,62 +93,8 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch movies based on current filter & page
-  const fetchMoviesData = useCallback(
-    async (
-      filterType: 'type' | 'genre' | 'country' | 'search',
-      filterValue: string,
-      page: number
-    ) => {
-      setIsLoading(true);
-      try {
-        let res;
-        if (filterType === 'type') {
-          res = await getMoviesByType(filterValue, page);
-        } else if (filterType === 'genre') {
-          res = await getMoviesByGenre(filterValue, page);
-        } else if (filterType === 'country') {
-          res = await getMoviesByCountry(filterValue, page);
-        } else if (filterType === 'search') {
-          res = await searchMovies(filterValue, page);
-        } else {
-          res = await getNewMovies(page);
-        }
-
-        if (res && res.items) {
-          setMovies(res.items);
-          if (res.paginate) {
-            setPaginate(res.paginate);
-          }
-
-          // Set hero movies (10 movies) from first page of new releases
-          if (filterType === 'type' && filterValue === 'phim-moi-cap-nhat' && page === 1) {
-            setHeroMovies(res.items.slice(0, 10));
-          } else if (heroMovies.length === 0 && res.items.length > 0) {
-            setHeroMovies(res.items.slice(0, 10));
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch movies list', err);
-        setMovies([]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [heroMovies.length]
-  );
-
-  // Trigger data load on filter/page change
-  useEffect(() => {
-    if (viewMode !== 'watch') {
-      fetchMoviesData(activeFilter.type, activeFilter.value, paginate.current_page);
-      resetDefaultSEO(activeFilter.label);
-    }
-  }, [activeFilter, paginate.current_page, fetchMoviesData, viewMode]);
-
-  // Handle movie selection -> switches to Watch view
-  const handleSelectMovie = async (slug: string) => {
-    setSelectedMovieSlug(slug);
+  // Fetch detail logic
+  const loadMovieDetail = useCallback(async (slug: string) => {
     setViewMode('watch');
     setIsDetailLoading(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -167,7 +103,7 @@ export default function App() {
       const detail = await getMovieDetail(slug);
       setMovieDetail(detail);
 
-      // Fetch related movies by matching genre or category
+      // Fetch related movies
       try {
         let genreSlug = '';
         if (detail.category) {
@@ -213,15 +149,104 @@ export default function App() {
       setIsDetailLoading(false);
       refreshCounters();
     }
+  }, [refreshCounters]);
+
+  // Fetch movies based on current filter & page
+  const fetchMoviesData = useCallback(
+    async (
+      filterType: 'type' | 'genre' | 'country' | 'search',
+      filterValue: string,
+      page: number
+    ) => {
+      setIsLoading(true);
+      try {
+        let res;
+        if (filterType === 'type') {
+          res = await getMoviesByType(filterValue, page);
+        } else if (filterType === 'genre') {
+          res = await getMoviesByGenre(filterValue, page);
+        } else if (filterType === 'country') {
+          res = await getMoviesByCountry(filterValue, page);
+        } else if (filterType === 'search') {
+          res = await searchMovies(filterValue, page);
+        } else {
+          res = await getNewMovies(page);
+        }
+
+        if (res && res.items) {
+          setMovies(res.items);
+          if (res.paginate) {
+            setPaginate(res.paginate);
+          }
+
+          if (filterType === 'type' && filterValue === 'phim-moi-cap-nhat' && page === 1) {
+            setHeroMovies(res.items.slice(0, 10));
+          } else if (heroMovies.length === 0 && res.items.length > 0) {
+            setHeroMovies(res.items.slice(0, 10));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch movies list', err);
+        setMovies([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [heroMovies.length]
+  );
+
+  // Sync URL Path with App State (URL Routing Handler)
+  useEffect(() => {
+    const path = location.pathname;
+
+    if (path.startsWith('/phim/')) {
+      const slug = path.replace('/phim/', '').replace(/\/$/, '');
+      if (slug) {
+        loadMovieDetail(slug);
+      }
+    } else if (path.startsWith('/danh-muc/')) {
+      const val = path.replace('/danh-muc/', '').replace(/\/$/, '');
+      setViewMode('home');
+      setActiveFilter({ type: 'type', value: val, label: val.replace(/-/g, ' ').toUpperCase() });
+    } else if (path.startsWith('/the-loai/')) {
+      const val = path.replace('/the-loai/', '').replace(/\/$/, '');
+      const found = GENRES.find((g) => g.slug === val);
+      setViewMode('home');
+      setActiveFilter({ type: 'genre', value: val, label: found ? found.name : val });
+    } else if (path.startsWith('/quoc-gia/')) {
+      const val = path.replace('/quoc-gia/', '').replace(/\/$/, '');
+      const found = COUNTRIES.find((c) => c.slug === val);
+      setViewMode('home');
+      setActiveFilter({ type: 'country', value: val, label: found ? found.name : val });
+    } else if (path === '/tim-kiem') {
+      const q = searchParams.get('q') || '';
+      setViewMode('home');
+      setActiveFilter({ type: 'search', value: q, label: `Kết quả tìm kiếm: "${q}"` });
+    } else {
+      setViewMode('home');
+      setActiveFilter({
+        type: 'type',
+        value: 'phim-moi-cap-nhat',
+        label: 'Phim Mới Cập Nhật',
+      });
+    }
+  }, [location.pathname, searchParams, loadMovieDetail]);
+
+  // Trigger data load on filter/page change
+  useEffect(() => {
+    if (viewMode !== 'watch') {
+      fetchMoviesData(activeFilter.type, activeFilter.value, paginate.current_page);
+      resetDefaultSEO(activeFilter.label);
+    }
+  }, [activeFilter, paginate.current_page, fetchMoviesData, viewMode]);
+
+  // Handle movie selection -> switches URL to /phim/:slug
+  const handleSelectMovie = (slug: string) => {
+    navigate(`/phim/${slug}`);
   };
 
   const handleNavigateHome = () => {
-    setViewMode('home');
-    setActiveFilter({
-      type: 'type',
-      value: 'phim-moi-cap-nhat',
-      label: 'Phim Mới Cập Nhật',
-    });
+    navigate('/');
     setPaginate((prev) => ({ ...prev, current_page: 1 }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -229,21 +254,17 @@ export default function App() {
   const handleSelectCategory = (
     type: 'type' | 'genre' | 'country',
     value: string,
-    label: string
+    _label: string
   ) => {
-    setViewMode('home');
-    setActiveFilter({ type, value, label });
+    if (type === 'type') navigate(`/danh-muc/${value}`);
+    else if (type === 'genre') navigate(`/the-loai/${value}`);
+    else if (type === 'country') navigate(`/quoc-gia/${value}`);
     setPaginate((prev) => ({ ...prev, current_page: 1 }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSearch = (keyword: string) => {
-    setViewMode('home');
-    setActiveFilter({
-      type: 'search',
-      value: keyword,
-      label: `Kết quả tìm kiếm: "${keyword}"`,
-    });
+    navigate(`/tim-kiem?q=${encodeURIComponent(keyword)}`);
     setPaginate((prev) => ({ ...prev, current_page: 1 }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -258,6 +279,7 @@ export default function App() {
   };
 
   const isDefaultHome =
+    location.pathname === '/' &&
     activeFilter.type === 'type' &&
     activeFilter.value === 'phim-moi-cap-nhat' &&
     paginate.current_page === 1;
@@ -292,7 +314,7 @@ export default function App() {
       >
         {viewMode === 'home' && (
           <div className="w-full max-w-full">
-            {/* Hero Banner (10 Movies Carousel on Home) */}
+            {/* Hero Banner */}
             {isDefaultHome && heroMovies.length > 0 && (
               <HeroBanner
                 movies={heroMovies}
@@ -303,10 +325,9 @@ export default function App() {
               />
             )}
 
-            {/* Horizontal Category Rows & Genre Slider on Default Home */}
+            {/* Horizontal Category Rows */}
             {isDefaultHome ? (
               <div className="movie-sections space-y-2 sm:space-y-4 mt-2 sm:mt-3 mb-12 w-full max-w-full">
-                {/* 1. Phim Mới Cập Nhật (30 Phim) */}
                 <MovieRow
                   title="Phim Mới Cập Nhật"
                   subtitle="Tổng hợp các bộ phim bom tấn và tập phim mới lên sóng hôm nay"
@@ -315,8 +336,6 @@ export default function App() {
                   onViewAll={() => handleSelectCategory('type', 'phim-moi-cap-nhat', 'Phim Mới Cập Nhật')}
                   onBookmarkChanged={refreshCounters}
                 />
-
-                {/* 2. Phim Bộ (30 Phim) */}
                 <MovieRow
                   title="Phim Bộ"
                   subtitle="Những bộ phim truyền hình dài tập đình đám nhất hiện nay"
@@ -325,8 +344,6 @@ export default function App() {
                   onViewAll={() => handleSelectCategory('type', 'phim-bo', 'Phim Bộ')}
                   onBookmarkChanged={refreshCounters}
                 />
-
-                {/* 3. Phim Lẻ (30 Phim) */}
                 <MovieRow
                   title="Phim Lẻ"
                   subtitle="Phim chiếu rạp, bom tấn hành động đỉnh cao chất lượng Full HD"
@@ -335,8 +352,6 @@ export default function App() {
                   onViewAll={() => handleSelectCategory('type', 'phim-le', 'Phim Lẻ')}
                   onBookmarkChanged={refreshCounters}
                 />
-
-                {/* 4. Hoạt Hình & Anime (30 Phim) */}
                 <MovieRow
                   title="Hoạt Hình & Anime"
                   subtitle="Thế giới Anime Nhật Bản, 3D Trung Quốc và hoạt hình chiếu rạp sống động"
@@ -345,8 +360,6 @@ export default function App() {
                   onViewAll={() => handleSelectCategory('type', 'hoat-hinh', 'Hoạt Hình & Anime')}
                   onBookmarkChanged={refreshCounters}
                 />
-
-                {/* 5. TV Shows (30 Phim) */}
                 <MovieRow
                   title="TV Shows"
                   subtitle="Các chương trình truyền hình thực tế, gameshow giải trí hấp dẫn"
@@ -357,7 +370,7 @@ export default function App() {
                 />
               </div>
             ) : (
-              /* Movie Grid Section (Hiển thị 60 phim khi xem chi tiết danh mục hoặc tìm kiếm) */
+              /* Movie Grid Section */
               <div className="w-full max-w-full px-[15px] md:px-[40px] box-border pt-24 pb-12">
                 <MovieGrid
                   title={activeFilter.label}
@@ -441,7 +454,7 @@ export default function App() {
         onRefreshData={refreshCounters}
       />
 
-      {/* Standalone Source Code Modal (HTML/CSS/JS for GitHub Pages) */}
+      {/* Standalone Source Code Modal */}
       <SourceCodeModal
         isOpen={isSourceCodeModalOpen}
         onClose={() => setIsSourceCodeModalOpen(false)}
@@ -451,7 +464,6 @@ export default function App() {
       <footer className="mt-20 border-t border-white/10 bg-[#050505] py-8 sm:py-12 text-slate-400 text-xs sm:text-sm">
         <div className="w-full max-w-full px-[15px] md:px-[40px] space-y-6 sm:space-y-8 box-border">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-8">
-            {/* Logo and Brand Name - Centered on mobile, left-aligned on desktop/tablet */}
             <div className="space-y-4 flex flex-col items-center text-center md:items-start md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2.5">
                 <div className="w-9 h-9 rounded-xl overflow-hidden bg-black p-0.5 shadow-lg shadow-purple-600/30 border border-purple-500/40 flex items-center justify-center shrink-0">
@@ -473,7 +485,6 @@ export default function App() {
                 Cả xóm cùng xem phim
               </p>
 
-              {/* Telegram Community Button */}
               <a
                 id="footer-telegram-btn"
                 href="https://t.me/+NikcMc8yA4JlM2Y1"
@@ -493,7 +504,7 @@ export default function App() {
               </a>
             </div>
 
-            {/* Phân Loại - Hidden on Mobile, preserved on Desktop & Tablet */}
+            {/* Phân Loại */}
             <div className="hidden md:block">
               <h4 className="font-bold text-white uppercase text-xs sm:text-sm tracking-wider mb-3">
                 Phân Loại
@@ -542,7 +553,7 @@ export default function App() {
               </ul>
             </div>
 
-            {/* Thể Loại Phim - Hidden on Mobile, preserved on Desktop & Tablet */}
+            {/* Thể Loại Phim */}
             <div className="hidden md:block">
               <h4 className="font-bold text-white uppercase text-xs sm:text-sm tracking-wider mb-3">
                 Thể Loại Phim
@@ -561,7 +572,7 @@ export default function App() {
               </ul>
             </div>
 
-            {/* Quốc Gia - Hidden on Mobile, preserved on Desktop & Tablet */}
+            {/* Quốc Gia */}
             <div className="hidden md:block">
               <h4 className="font-bold text-white uppercase text-xs sm:text-sm tracking-wider mb-3">
                 Quốc Gia
@@ -590,4 +601,3 @@ export default function App() {
     </div>
   );
 }
-
