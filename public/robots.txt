@@ -1,0 +1,36 @@
+# Robots.txt for Xóm Phim - Cả Xóm Cùng Xem Phim
+# https://xomphim.com/
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /api-nguonc/
+Disallow: /assets/.aistudio/
+Disallow: /*?search=*
+
+# Dedicated crawlers
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /api-nguonc/
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /logo.jpg
+Allow: /favicon.png
+Allow: /og-image.jpg
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# Sitemap Index Declaration
+Sitemap: https://xomphim.com/sitemap.xml

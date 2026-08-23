@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xóm Phim - Cả Xóm Cùng Xem Phim | Xem Phim HD Miễn Phí</title>
+  <meta name="description" content="Xóm Phim - Cả xóm cùng xem phim. Website xem phim trực tuyến hiện đại phong cách Netflix, phim mới cập nhật liên tục, tốc độ cao, vietsub thuyết minh full HD." />
+  <meta name="keywords" content="xóm phim, xem phim trực tuyến, phim mới, phim vietsub, phim thuyết minh, phim hd, nguonc" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href="https://xomphim.com/" />
+
+  <!-- Favicon & Icons -->
+  <link rel="icon" type="image/jpeg" href="favicon.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Xóm Phim" />
+  <meta property="og:title" content="Xóm Phim - Cả Xóm Cùng Xem Phim | Xem Phim HD Miễn Phí" />
+  <meta property="og:description" content="Xóm Phim - Cả xóm cùng xem phim. Website xem phim trực tuyến hiện đại với hàng ngàn bộ phim HD vietsub, thuyết minh." />
+  <meta property="og:image" content="og-image.jpg" />
+  <meta property="og:url" content="https://xomphim.com/" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Xóm Phim - Cả Xóm Cùng Xem Phim" />
+  <meta name="twitter:description" content="Xóm Phim - Cả xóm cùng xem phim. Phim mới cập nhật liên tục, tốc độ cao, vietsub thuyết minh." />
+  <meta name="twitter:image" content="og-image.jpg" />
+
+  <!-- Schema JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://xomphim.com/#organization",
+        "name": "Xóm Phim",
+        "url": "https://xomphim.com",
+        "logo": "https://xomphim.com/logo.jpg",
+        "sameAs": ["https://t.me/+NikcMc8yA4JlM2Y1"],
+        "description": "Website xem phim trực tuyến hiện đại phong cách Netflix, phim mới cập nhật liên tục, tốc độ cao, vietsub thuyết minh."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://xomphim.com/#website",
+        "url": "https://xomphim.com",
+        "name": "Xóm Phim",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://xomphim.com/?search={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons for Vanilla JS standalone -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Overlay Tắt Đèn Rạp Chiếu -->
+  <div id="lights-overlay" class="lights-overlay hidden">
+    <div class="lights-hint"><i class="fa-solid fa-sun"></i> Nhấn vào bất kỳ đâu để bật lại đèn</div>
+  </div>
+
+  <!-- Header Điều Hướng (Sticky + Glassmorphism) -->
+  <header id="header" class="header">
+    <div class="container header-container">
+      <!-- Logo -->
+      <a href="#" id="logo-btn" class="logo">
+        <div class="logo-icon logo-img-wrap">
+          <img src="logo.jpg" alt="Logo Xóm Phim" class="brand-logo-img" />
+        </div>
+        <div class="logo-text">
+          <span>XÓM <span class="highlight">PHIM</span></span>
+          <span class="badge-cyber">FULL HD</span>
+        </div>
+      </a>
+
+      <!-- Menu Điều Hướng Desktop -->
+      <nav class="nav-menu">
+        <button class="nav-link active" data-type="phim-moi-cap-nhat">Trang Chủ</button>
+        <button class="nav-link" data-type="phim-bo">Phim Bộ</button>
+        <button class="nav-link" data-type="phim-le">Phim Lẻ</button>
+        <button class="nav-link" data-type="hoat-hinh">Hoạt Hình</button>
+        <button class="nav-link" data-type="tv-shows">TV Shows</button>
+        
+        <!-- Dropdown Thể Loại -->
+        <div class="dropdown">
+          <button class="dropdown-toggle">
+            Thể Loại <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="dropdown-menu" id="genre-dropdown-menu">
+            <!-- Render động bằng JS -->
+          </div>
+        </div>
+
+        <!-- Dropdown Quốc Gia -->
+        <div class="dropdown">
+          <button class="dropdown-toggle">
+            Quốc Gia <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="dropdown-menu" id="country-dropdown-menu">
+            <!-- Render động bằng JS -->
+          </div>
+        </div>
+      </nav>
+
+      <!-- Thanh Tìm Kiếm & Nút Tiện Ích -->
+      <div class="header-actions">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="search-input" placeholder="Tìm phim, diễn viên..." />
+          <button id="search-clear" class="search-clear hidden"><i class="fa-solid fa-xmark"></i></button>
+          <div id="search-suggestions" class="search-suggestions hidden"></div>
+        </div>
+
+        <button id="btn-open-bookmarks" class="icon-btn" title="Phim Yêu Thích">
+          <i class="fa-solid fa-bookmark"></i>
+          <span id="bookmark-badge" class="badge-count hidden">0</span>
+        </button>
+
+        <button id="btn-open-history" class="icon-btn" title="Lịch Sử Xem">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span id="history-badge" class="badge-count hidden">0</span>
+        </button>
+
+        <button id="btn-mobile-toggle" class="mobile-toggle-btn">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Drawer Menu -->
+    <div id="mobile-menu" class="mobile-menu hidden">
+      <div class="mobile-nav-grid">
+        <button class="mobile-nav-btn" data-type="phim-moi-cap-nhat"><i class="fa-solid fa-house"></i> Trang Chủ</button>
+        <button class="mobile-nav-btn" data-type="phim-bo"><i class="fa-solid fa-tv"></i> Phim Bộ</button>
+        <button class="mobile-nav-btn" data-type="phim-le"><i class="fa-solid fa-clapperboard"></i> Phim Lẻ</button>
+        <button class="mobile-nav-btn" data-type="hoat-hinh"><i class="fa-solid fa-dragon"></i> Hoạt Hình</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="main-content">
+    <!-- View 1: Trang Danh Sách Phim (Trang Chủ / Phân Loại / Tìm Kiếm) -->
+    <div id="home-view" class="view-section">
+      <!-- Hero Banner Phim Nổi Bật -->
+      <section id="hero-banner" class="hero-banner">
+        <!-- Render nội dung banner bằng JavaScript -->
+      </section>
+
+      <div class="container main-container">
+        <!-- Tiêu Đề Danh Mục & Bộ Lọc Nhanh -->
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="title-bar"></span>
+            <h2 id="section-title" class="section-title">Phim Mới Cập Nhật</h2>
+          </div>
+          <div id="filter-pills" class="filter-pills">
+            <!-- Các tag bộ lọc nhanh -->
+          </div>
+        </div>
+
+        <!-- Lưới Danh Sách Phim (CSS Grid) -->
+        <div id="movie-grid" class="movie-grid">
+          <!-- Render danh sách card phim bằng JavaScript -->
+        </div>
+
+        <!-- Phân Trang (Pagination) -->
+        <div id="pagination" class="pagination">
+          <!-- Render phân trang bằng JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- View 2: Trang Xem Phim (SPA View - Chi Tiết & Trình Phát Video) -->
+    <div id="watch-view" class="view-section hidden">
+      <div class="container watch-container">
+        <!-- Nút Quay Lại & Breadcrumb -->
+        <div class="watch-nav">
+          <button id="btn-back-home" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> Quay lại danh sách
+          </button>
+          <div id="watch-breadcrumb" class="breadcrumb">
+            <!-- Breadcrumb đường dẫn phim -->
+          </div>
+        </div>
+
+        <!-- Trình Phát Video (Iframe Embed) -->
+        <div class="player-wrapper">
+          <div class="player-aspect">
+            <iframe id="video-player" src="" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+          </div>
+
+          <!-- Thanh Điều Khiển Nhanh Dưới Video -->
+          <div class="player-toolbar">
+            <div class="toolbar-left">
+              <button id="btn-prev-ep" class="ctrl-btn"><i class="fa-solid fa-backward-step"></i> Tập trước</button>
+              <button id="btn-next-ep" class="ctrl-btn">Tập tiếp <i class="fa-solid fa-forward-step"></i></button>
+              <button id="btn-reload-player" class="ctrl-btn" title="Tải lại Player"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+            <div class="toolbar-right">
+              <button id="btn-toggle-lights" class="ctrl-btn"><i class="fa-solid fa-moon"></i> Tắt đèn</button>
+              <button id="btn-toggle-theater" class="ctrl-btn"><i class="fa-solid fa-expand"></i> Rạp chiếu</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chọn Server & Tập Phim -->
+        <div class="episodes-panel glass-box">
+          <div class="panel-section">
+            <div class="panel-title"><i class="fa-solid fa-server"></i> Chọn Nguồn Phát (Server):</div>
+            <div id="server-list" class="server-buttons"></div>
+          </div>
+
+          <div class="panel-section">
+            <div class="panel-header-flex">
+              <div class="panel-title"><i class="fa-solid fa-layer-group"></i> Danh Sách Tập Phim:</div>
+              <input type="text" id="episode-search-input" placeholder="Tìm nhanh số tập..." class="ep-search-input" />
+            </div>
+            <div id="episode-chunks" class="chunk-buttons"></div>
+            <div id="episode-list" class="episode-grid"></div>
+          </div>
+        </div>
+
+        <!-- Thông Tin Phim & Tóm Tắt Nội Dung -->
+        <div id="movie-detail-info" class="movie-info-panel glass-box">
+          <!-- Render thông tin chi tiết bằng JavaScript -->
+        </div>
+
+        <!-- Phim Đề Xuất Cùng Thể Loại -->
+        <div class="related-section">
+          <div class="section-title-wrap">
+            <span class="title-bar bar-cyan"></span>
+            <h3 class="section-title">Phim Đề Xuất Cùng Thể Loại</h3>
+          </div>
+          <div id="related-grid" class="movie-grid"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Yêu Thích & Lịch Sử -->
+  <div id="bookmarks-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-box">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button id="tab-fav" class="modal-tab active"><i class="fa-solid fa-bookmark"></i> Phim Yêu Thích</button>
+          <button id="tab-hist" class="modal-tab"><i class="fa-solid fa-clock-rotate-left"></i> Lịch Sử Xem</button>
+        </div>
+        <button id="btn-close-modal" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="modal-body" class="modal-body">
+        <!-- Render danh sách yêu thích / lịch sử -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <div class="logo">
+          <div class="logo-icon logo-img-wrap"><img src="logo.jpg" alt="Logo Xóm Phim" class="brand-logo-img" /></div>
+          <span>XÓM <span class="highlight">PHIM</span></span>
+        </div>
+        <p>Cả xóm cùng xem phim - Website xem phim trực tuyến hiện đại phong cách Netflix & Dark Mode, tích hợp nguồn dữ liệu API NguonC.</p>
+        <a href="https://t.me/+NikcMc8yA4JlM2Y1" target="_blank" rel="noopener noreferrer" class="btn-telegram" id="standalone-telegram-btn">
+          <i class="fa-brands fa-telegram"></i> Gia Nhập Nhóm Telegram
+        </a>
+      </div>
+      <div class="footer-copy">
+        &copy; 2026 Xóm Phim. Dữ liệu phim cung cấp bởi NguonC API.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script Logic Vanilla JS -->
+  <script src="app.js"></script>
+</body>
+</html>
