@@ -335,7 +335,7 @@ export async function getMoviesForRow(
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1FgPWP1ZPoXVw9XrBlzY7CCwux6Nxtz_xcHCrCjEyorQ/export?format=csv';
 
 /**
- * Lấy danh sách phim Đam Mỹ từ Google Sheets tự động
+ * Lấy danh sách phim Đam Mỹ từ Google Sheets và tự động sắp xếp phim mới cập nhật lên đầu
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
@@ -371,6 +371,13 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
           blMovies.push(matched);
         }
       }
+    });
+
+    // SẮP XẾP: Đưa phim mới cập nhật nhất lên đầu
+    blMovies.sort((a, b) => {
+      const timeA = new Date((a as any).modified?.time || (a as any).updated_at || 0).getTime();
+      const timeB = new Date((b as any).modified?.time || (b as any).updated_at || 0).getTime();
+      return timeB - timeA;
     });
 
     return {
