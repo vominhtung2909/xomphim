@@ -45,6 +45,7 @@ const GENRE_LIST_DATA: Record<
   string,
   { icon: React.ComponentType<{ className?: string }>; tagline: string; color: string }
 > = {
+  'dam-my': { icon: Sparkles, tagline: 'Tình cảm boy love, thanh xuân', color: 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30' },
   'hanh-dong': { icon: Flame, tagline: 'Hành động, gay cấn & kịch tính', color: 'text-red-400 bg-red-500/10 border-red-500/30' },
   'tinh-cam': { icon: Heart, tagline: 'Lãng mạn, ngọt ngào, tình yêu', color: 'text-pink-400 bg-pink-500/10 border-pink-500/30' },
   'co-trang': { icon: Crown, tagline: 'Kiếm hiệp, cung đấu, lịch sử', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
