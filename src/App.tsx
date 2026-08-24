@@ -164,6 +164,8 @@ export default function App() {
         let res;
         if (filterType === 'type') {
           res = await getMoviesByType(filterValue, page);
+        } else if (filterType === 'genre' && filterValue === 'dam-my') {
+          res = await getBLMoviesFromSheet(page);
         } else if (filterType === 'genre') {
           res = await getMoviesByGenre(filterValue, page);
         } else if (filterType === 'country') {
@@ -173,7 +175,6 @@ export default function App() {
         } else {
           res = await getNewMovies(page);
         }
-
         if (res && res.items) {
           setMovies(res.items);
           if (res.paginate) {
