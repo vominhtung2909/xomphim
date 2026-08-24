@@ -17,7 +17,8 @@ import {
   getMoviesByGenre,
   getMoviesByType,
   getNewMovies,
-  searchMovies
+  searchMovies,
+  getBLMoviesFromSheet
 } from './services/api';
 import { getBookmarks, getWatchHistory } from './services/storage';
 import { resetDefaultSEO } from './services/seo';
