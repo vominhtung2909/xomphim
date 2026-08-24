@@ -332,3 +332,63 @@ export async function getMoviesForRow(
     return [];
   }
 }
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1FgPWP1ZPoXVw9XrBlzY7CCwux6Nxtz_xcHCrCjEyorQ/export?format=csv';
+
+/**
+ * Lấy danh sách phim Đam Mỹ từ Google Sheets tự động
+ */
+export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
+  try {
+    const sheetRes = await fetch(GOOGLE_SHEET_CSV_URL);
+    const csvText = await sheetRes.text();
+
+    // Tách từng dòng tên phim và loại bỏ dòng tiêu đề nếu có
+    const movieNames = csvText
+      .split('\n')
+      .map((line) => line.trim().replace(/^"|"$/g, ''))
+      .filter((name) => name.length > 0 && !name.toLowerCase().includes('tên phim'));
+
+    if (movieNames.length === 0) {
+      return {
+        status: 'success',
+        items: [],
+        paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 }
+      };
+    }
+
+    // Tìm kiếm từng tên phim trên NguonC
+    const searchPromises = movieNames.map((name) => searchMovies(name, 1));
+    const searchResults = await Promise.all(searchPromises);
+
+    const blMovies: MovieItem[] = [];
+    const seenSlugs = new Set<string>();
+
+    searchResults.forEach((res) => {
+      if (res && res.items && res.items.length > 0) {
+        const matched = res.items[0];
+        if (!seenSlugs.has(matched.slug)) {
+          seenSlugs.add(matched.slug);
+          blMovies.push(matched);
+        }
+      }
+    });
+
+    return {
+      status: 'success',
+      items: blMovies,
+      paginate: {
+        current_page: page,
+        total_page: 1,
+        total_items: blMovies.length,
+        items_per_page: Math.max(blMovies.length, 24),
+      },
+    };
+  } catch (error) {
+    console.error('Lỗi tải danh sách Đam Mỹ từ Google Sheets:', error);
+    return { 
+      status: 'error', 
+      items: [], 
+      paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } 
+    };
+  }
+}
