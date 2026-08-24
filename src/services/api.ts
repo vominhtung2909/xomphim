@@ -11,6 +11,11 @@ export const MOVIE_TYPES: CategoryOption[] = [
 ];
 
 export const GENRES: CategoryOption[] = [
+  { 
+    name: 'Đam Mỹ', 
+    slug: 'dam-my', 
+    description: 'Tình cảm boy love, thanh xuân ngọt ngào' 
+  },
   { name: 'Hành Động', slug: 'hanh-dong' },
   { name: 'Tình Cảm', slug: 'tinh-cam' },
   { name: 'Cổ Trang', slug: 'co-trang' },
