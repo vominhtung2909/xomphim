@@ -339,10 +339,10 @@ const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1FgPWP1ZPoX
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
-    const sheetRes = await fetch(GOOGLE_SHEET_CSV_URL);
+    // Thêm timestamp để luôn lấy dữ liệu mới nhất từ Google Sheets không bị dính cache
+    const sheetRes = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${Date.now()}`);
     const csvText = await sheetRes.text();
 
-    // Tách từng dòng tên phim và loại bỏ dòng tiêu đề nếu có
     const movieNames = csvText
       .split('\n')
       .map((line) => line.trim().replace(/^"|"$/g, ''))
@@ -356,7 +356,7 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       };
     }
 
-    // Tìm kiếm từng tên phim trên NguonC
+    // Tìm kiếm từng tên phim trên API nguồn
     const searchPromises = movieNames.map((name) => searchMovies(name, 1));
     const searchResults = await Promise.all(searchPromises);
 
@@ -373,10 +373,18 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       }
     });
 
-    // SẮP XẾP: Đưa phim mới cập nhật nhất lên đầu
-    blMovies.sort((a, b) => {
-      const timeA = new Date((a as any).modified?.time || (a as any).updated_at || 0).getTime();
-      const timeB = new Date((b as any).modified?.time || (b as any).updated_at || 0).getTime();
+    // SẮP XẾP CHUẨN XÁC: Quét tất cả các trường ngày tháng có thể có từ API NguonC
+    blMovies.sort((a: any, b: any) => {
+      const parseDate = (item: any) => {
+        const dateStr = item?.updated || item?.created || item?.modified?.time || item?.updated_at || '';
+        const time = new Date(dateStr).getTime();
+        return isNaN(time) ? 0 : time;
+      };
+
+      const timeA = parseDate(a);
+      const timeB = parseDate(b);
+
+      // Nếu có phim đang chiếu dở (ví dụ Tập 5) so với phim đã hoàn tất, ưu tiên phim mới
       return timeB - timeA;
     });
 
