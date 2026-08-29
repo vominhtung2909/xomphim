@@ -50,9 +50,8 @@ export const COUNTRIES: CategoryOption[] = [
   { name: 'Ấn Độ', slug: 'an-do' },
 ];
 
-// In-memory cache
 const cache = new Map<string, { timestamp: number; data: unknown }>();
-const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const CACHE_TTL = 3 * 60 * 1000;
 const MOVIES_PER_PAGE_TARGET = 60;
 const API_PAGE_CHUNK = 6;
 
@@ -115,12 +114,7 @@ async function fetchCategoryWith60Limit(
       return {
         status: 'error',
         items: [],
-        paginate: {
-          current_page: userPage,
-          total_page: 1,
-          total_items: 0,
-          items_per_page: MOVIES_PER_PAGE_TARGET,
-        },
+        paginate: { current_page: userPage, total_page: 1, total_items: 0, items_per_page: MOVIES_PER_PAGE_TARGET },
       };
     }
 
@@ -140,7 +134,6 @@ async function fetchCategoryWith60Limit(
 
     const mergedItems: MovieItem[] = [...firstRes.items];
     const seenSlugs = new Set<string>(mergedItems.map((m) => m.slug));
-
     const totalApiPages = firstRes.paginate?.total_page ?? 1;
     const totalItems = firstRes.paginate?.total_items ?? mergedItems.length;
 
@@ -171,30 +164,22 @@ async function fetchCategoryWith60Limit(
       }
     }
 
-    const calculatedTotalPages = Math.max(1, Math.ceil(totalItems / MOVIES_PER_PAGE_TARGET));
-
     return {
       status: 'success',
       cat: firstRes.cat,
       paginate: {
         current_page: userPage,
-        total_page: calculatedTotalPages,
+        total_page: Math.max(1, Math.ceil(totalItems / MOVIES_PER_PAGE_TARGET)),
         total_items: totalItems,
         items_per_page: mergedItems.length,
       },
       items: mergedItems,
     };
   } catch (error) {
-    console.warn(`Lỗi khi fetch danh mục:`, error);
     return {
       status: 'error',
       items: [],
-      paginate: {
-        current_page: userPage,
-        total_page: 1,
-        total_items: 0,
-        items_per_page: MOVIES_PER_PAGE_TARGET,
-      },
+      paginate: { current_page: userPage, total_page: 1, total_items: 0, items_per_page: MOVIES_PER_PAGE_TARGET },
     };
   }
 }
@@ -204,16 +189,12 @@ export async function getNewMovies(page = 1): Promise<ApiResponseList> {
 }
 
 export async function getMoviesByType(typeSlug: string, page = 1): Promise<ApiResponseList> {
-  if (typeSlug === 'phim-moi-cap-nhat') {
-    return getNewMovies(page);
-  }
+  if (typeSlug === 'phim-moi-cap-nhat') return getNewMovies(page);
   return fetchCategoryWith60Limit((p) => `films/danh-sach/${typeSlug}?page=${p}`, page);
 }
 
-/**
- * Lấy danh sách phim theo thể loại (Đã cấu hình tự chuyển hướng Đam Mỹ sang Sheet)
- */
 export async function getMoviesByGenre(genreSlug: string, page = 1): Promise<ApiResponseList> {
+  // GỌI HÀM SHEET KHI CHỌN ĐAM MỸ Ở ĐÂY
   if (genreSlug === 'dam-my') {
     return getBLMoviesFromSheet(page);
   }
@@ -254,30 +235,25 @@ export async function getMoviesForRow(
   targetCount = 30
 ): Promise<MovieItem[]> {
   try {
+    // CHUYỂN HƯỚNG TRANG CHỦ SANG SHEET
     if (type === 'genre' && slug === 'dam-my') {
       const blRes = await getBLMoviesFromSheet(1);
       return (blRes.items || []).slice(0, targetCount);
     }
 
     const getPath = (p: number) => {
-      if (type === 'type') {
-        return slug === 'phim-moi-cap-nhat' ? `films/phim-moi-cap-nhat?page=${p}` : `films/danh-sach/${slug}?page=${p}`;
-      } else if (type === 'genre') {
-        return `films/the-loai/${slug}?page=${p}`;
-      } else {
-        return `films/quoc-gia/${slug}?page=${p}`;
-      }
+      if (type === 'type') return slug === 'phim-moi-cap-nhat' ? `films/phim-moi-cap-nhat?page=${p}` : `films/danh-sach/${slug}?page=${p}`;
+      if (type === 'genre') return `films/the-loai/${slug}?page=${p}`;
+      return `films/quoc-gia/${slug}?page=${p}`;
     };
 
     const firstRes = await fetchApiEndpoint<ApiResponseList>(getPath(1)).catch(() => null);
-    if (!firstRes || !firstRes.items || firstRes.items.length === 0) {
-      return [];
-    }
+    if (!firstRes || !firstRes.items || firstRes.items.length === 0) return [];
 
     const merged: MovieItem[] = [...firstRes.items];
     const seenSlugs = new Set<string>(merged.map((m) => m.slug));
-
     const totalPages = firstRes.paginate?.total_page ?? 1;
+
     if (merged.length < targetCount && totalPages > 1) {
       const extraPages = [2, 3].filter((p) => p <= totalPages);
       const extraResults = await Promise.allSettled(
@@ -300,47 +276,33 @@ export async function getMoviesForRow(
 
     return merged.slice(0, targetCount);
   } catch (error) {
-    console.warn(`Lỗi khi lấy 30 phim cho hàng ngang ${slug}:`, error);
     return [];
   }
 }
-// Link CSV xuất bản từ Google Sheet của bạn
+
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQGYPjV2eNr_elQre2K5yGiWlcfAvR1r6Sp46YfWT0Sccw0xQYNDvxCBotnX9JlUX0YkBNvycXIfCwi/pub?gid=0&single=true&output=csv';
 
-/**
- * Lấy danh sách phim Đam Mỹ trực tiếp từ Google Sheets
- */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
     const sheetRes = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${Date.now()}`);
-    if (!sheetRes.ok) throw new Error('Không thể kết nối Google Sheets');
+    if (!sheetRes.ok) throw new Error('Lỗi tải Sheet');
 
     const csvText = await sheetRes.text();
 
-    // 1. Tách dòng và chỉ lọc bỏ dòng tiêu đề "tên phim" hoặc dòng trống
     const rawLines = csvText
       .split(/\r?\n/)
       .map((line) => line.trim().replace(/^"|"$/g, ''))
       .filter((line) => line.length > 3 && !line.toLowerCase().startsWith('tên phim') && !line.toLowerCase().startsWith('stt'));
 
     if (rawLines.length === 0) {
-      return {
-        status: 'success',
-        items: [],
-        paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 }
-      };
+      return { status: 'success', items: [], paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } };
     }
 
-    // 2. Bóc tách slug từ mọi định dạng link
     const moviePromises = rawLines.map(async (item) => {
       let slug = item;
-      if (slug.includes('/film/')) {
-        slug = slug.split('/film/')[1].split('?')[0].replace(/\/$/, '');
-      } else if (slug.includes('/phim/')) {
-        slug = slug.split('/phim/')[1].split('?')[0].replace(/\/$/, '');
-      } else if (slug.includes('/')) {
-        slug = slug.substring(slug.lastIndexOf('/') + 1);
-      }
+      if (slug.includes('/film/')) slug = slug.split('/film/')[1].split('?')[0].replace(/\/$/, '');
+      else if (slug.includes('/phim/')) slug = slug.split('/phim/')[1].split('?')[0].replace(/\/$/, '');
+      else if (slug.includes('/')) slug = slug.substring(slug.lastIndexOf('/') + 1);
 
       slug = slug.trim().toLowerCase();
       if (!slug) return null;
@@ -366,7 +328,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
         };
         return itemObj;
       } catch (err) {
-        console.warn(`Không thể tải phim: ${slug}`, err);
         return null;
       }
     });
@@ -374,61 +335,33 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
     const results = await Promise.all(moviePromises);
     const blMovies: MovieItem[] = results.filter((m): m is MovieItem => m !== null);
 
-    // 3. Phân loại phim đang cập nhật vs đã hoàn thành
     const checkIsOngoing = (movie: any): boolean => {
       const epRaw = (movie?.current_episode || '').trim().toLowerCase();
-      if (
-        epRaw.includes('full') ||
-        epRaw.includes('hoàn tất') ||
-        epRaw.includes('hoàn thành') ||
-        epRaw.includes('trọn bộ') ||
-        epRaw.includes('end') ||
-        epRaw.includes('đã kết thúc')
-      ) {
-        return false;
-      }
-
+      if (epRaw.includes('full') || epRaw.includes('hoàn tất') || epRaw.includes('hoàn thành') || epRaw.includes('trọn bộ') || epRaw.includes('end') || epRaw.includes('đã kết thúc')) return false;
       const slashMatch = epRaw.match(/(\d+)\s*\/\s*(\d+)/);
-      if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[1] === slashMatch[2]) {
-        return false;
-      }
-
+      if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[1] === slashMatch[2]) return false;
       return true;
     };
 
     const parseDate = (item: any) => {
-      const dateStr = item?.modified || item?.updated || item?.created || '';
-      const time = new Date(dateStr).getTime();
+      const time = new Date(item?.modified || item?.updated || item?.created || '').getTime();
       return isNaN(time) ? 0 : time;
     };
 
-    // 4. Ưu tiên: Phim đang chiếu -> Phim mới cập nhật lên đầu
     blMovies.sort((a: any, b: any) => {
       const isOngoingA = checkIsOngoing(a);
       const isOngoingB = checkIsOngoing(b);
-
       if (isOngoingA && !isOngoingB) return -1;
       if (!isOngoingA && isOngoingB) return 1;
-
       return parseDate(b) - parseDate(a);
     });
 
     return {
       status: 'success',
       items: blMovies,
-      paginate: {
-        current_page: page,
-        total_page: 1,
-        total_items: blMovies.length,
-        items_per_page: Math.max(blMovies.length, 24),
-      },
+      paginate: { current_page: page, total_page: 1, total_items: blMovies.length, items_per_page: Math.max(blMovies.length, 24) },
     };
   } catch (error) {
-    console.error('Lỗi tải danh sách Đam Mỹ từ Google Sheets:', error);
-    return { 
-      status: 'error', 
-      items: [], 
-      paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } 
-    };
+    return { status: 'error', items: [], paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } };
   }
 }
