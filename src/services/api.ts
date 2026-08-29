@@ -332,23 +332,28 @@ export async function getMoviesForRow(
     return [];
   }
 }
-const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1FgPWP1ZPoXVw9XrBlzY7CCwux6Nxtz_xcHCrCjEyorQ/export?format=csv';
+// Link CSV xuất bản từ Google Sheet của bạn
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQGYPjV2eNr_elQre2K5yGiWlcfAvR1r6Sp46YfWT0Sccw0xQYNDvxCBotnX9JlUX0YkBNvycXIfCwi/pub?gid=0&single=true&output=csv';
 
 /**
- * Lấy danh sách phim Đam Mỹ từ Google Sheets và tự động sắp xếp phim mới cập nhật lên đầu
+ * Lấy danh sách phim Đam Mỹ trực tiếp từ API URL / Slug trong Google Sheets
+ * Tự động đồng bộ tập mới và sắp xếp phim mới cập nhật lên đầu
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
-    // Thêm timestamp để luôn lấy dữ liệu mới nhất từ Google Sheets không bị dính cache
+    // Thêm timestamp để không bị dính cache trình duyệt
     const sheetRes = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${Date.now()}`);
+    if (!sheetRes.ok) throw new Error('Không thể kết nối Google Sheets');
+    
     const csvText = await sheetRes.text();
 
-    const movieNames = csvText
+    // Bóc tách từng dòng trong Sheet và loại bỏ dòng rác
+    const rawLines = csvText
       .split('\n')
-      .map((line) => line.trim().replace(/^"|"$/g, ''))
-      .filter((name) => name.length > 0 && !name.toLowerCase().includes('tên phim'));
+      .map((line) => line.trim().replace(/^"|"$/g, '').replace(/\r/g, ''))
+      .filter((line) => line.length > 0 && !line.toLowerCase().includes('tên phim') && !line.toLowerCase().includes('slug') && !line.toLowerCase().includes('api'));
 
-    if (movieNames.length === 0) {
+    if (rawLines.length === 0) {
       return {
         status: 'success',
         items: [],
@@ -356,36 +361,38 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       };
     }
 
-    // Tìm kiếm từng tên phim trên API nguồn
-    const searchPromises = movieNames.map((name) => searchMovies(name, 1));
-    const searchResults = await Promise.all(searchPromises);
+    // Trích xuất slug và gọi trực tiếp API chi tiết của từng phim
+    const moviePromises = rawLines.map(async (item) => {
+      let slug = item;
+      if (item.includes('/film/')) {
+        slug = item.split('/film/')[1].replace(/\/$/, '');
+      } else if (item.includes('/phim/')) {
+        slug = item.split('/phim/')[1].replace(/\/$/, '');
+      } else if (item.startsWith('http')) {
+        slug = item.substring(item.lastIndexOf('/') + 1);
+      }
 
-    const blMovies: MovieItem[] = [];
-    const seenSlugs = new Set<string>();
-
-    searchResults.forEach((res) => {
-      if (res && res.items && res.items.length > 0) {
-        const matched = res.items[0];
-        if (!seenSlugs.has(matched.slug)) {
-          seenSlugs.add(matched.slug);
-          blMovies.push(matched);
-        }
+      try {
+        const detail = await getMovieDetail(slug);
+        return detail as MovieItem;
+      } catch (err) {
+        console.warn(`Không tìm thấy phim với slug: ${slug}`, err);
+        return null;
       }
     });
 
-    // SẮP XẾP CHUẨN XÁC: Quét tất cả các trường ngày tháng có thể có từ API NguonC
+    const results = await Promise.all(moviePromises);
+    const blMovies: MovieItem[] = results.filter((m): m is MovieItem => m !== null);
+
+    // Sắp xếp phim có chỉnh sửa hoặc tập mới nhất lên đầu danh sách
     blMovies.sort((a: any, b: any) => {
       const parseDate = (item: any) => {
-        const dateStr = item?.updated || item?.created || item?.modified?.time || item?.updated_at || '';
+        const dateStr = item?.modified || item?.updated || item?.created || '';
         const time = new Date(dateStr).getTime();
         return isNaN(time) ? 0 : time;
       };
 
-      const timeA = parseDate(a);
-      const timeB = parseDate(b);
-
-      // Nếu có phim đang chiếu dở (ví dụ Tập 5) so với phim đã hoàn tất, ưu tiên phim mới
-      return timeB - timeA;
+      return parseDate(b) - parseDate(a);
     });
 
     return {
