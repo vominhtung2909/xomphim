@@ -337,17 +337,17 @@ const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ
 
 /**
  * Lấy danh sách phim Đam Mỹ trực tiếp từ API URL / Slug trong Google Sheets
- * Tự động đồng bộ tập mới và sắp xếp phim mới cập nhật lên đầu
+ * Ưu tiên:
+ * 1. Phim đang cập nhật (đang chiếu) xếp lên đầu
+ * 2. Phim có tập mới / chỉnh sửa gần nhất xếp trước
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
-    // Thêm timestamp để không bị dính cache trình duyệt
     const sheetRes = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${Date.now()}`);
     if (!sheetRes.ok) throw new Error('Không thể kết nối Google Sheets');
     
     const csvText = await sheetRes.text();
 
-    // Bóc tách từng dòng trong Sheet và loại bỏ dòng rác
     const rawLines = csvText
       .split('\n')
       .map((line) => line.trim().replace(/^"|"$/g, '').replace(/\r/g, ''))
@@ -361,7 +361,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       };
     }
 
-    // Trích xuất slug và gọi trực tiếp API chi tiết của từng phim
     const moviePromises = rawLines.map(async (item) => {
       let slug = item;
       if (item.includes('/film/')) {
@@ -384,14 +383,51 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
     const results = await Promise.all(moviePromises);
     const blMovies: MovieItem[] = results.filter((m): m is MovieItem => m !== null);
 
-    // Sắp xếp phim có chỉnh sửa hoặc tập mới nhất lên đầu danh sách
-    blMovies.sort((a: any, b: any) => {
-      const parseDate = (item: any) => {
-        const dateStr = item?.modified || item?.updated || item?.created || '';
-        const time = new Date(dateStr).getTime();
-        return isNaN(time) ? 0 : time;
-      };
+    // Hàm kiểm tra phim đã kết thúc hay chưa
+    const checkIsOngoing = (movie: any): boolean => {
+      const epRaw = (movie?.current_episode || '').trim().toLowerCase();
+      const statusRaw = (movie?.status || '').trim().toLowerCase();
 
+      // Nếu chứa các từ khóa kết thúc -> Đã hoàn thành (false)
+      if (
+        epRaw.includes('full') ||
+        epRaw.includes('hoàn tất') ||
+        epRaw.includes('hoàn thành') ||
+        epRaw.includes('trọn bộ') ||
+        epRaw.includes('end') ||
+        epRaw.includes('đã kết thúc') ||
+        statusRaw.includes('hoàn tất') ||
+        statusRaw.includes('hoàn thành') ||
+        statusRaw.includes('completed')
+      ) {
+        return false;
+      }
+
+      // Nếu có định dạng 10/10, 16/16 -> Đã hoàn thành (false)
+      const slashMatch = epRaw.match(/(\d+)\s*\/\s*(\d+)/);
+      if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[1] === slashMatch[2]) {
+        return false;
+      }
+
+      // Các trường hợp còn lại (Tập 1, Tập 7, Đang chiếu...) -> Đang cập nhật (true)
+      return true;
+    };
+
+    const parseDate = (item: any) => {
+      const dateStr = item?.modified || item?.updated || item?.created || '';
+      const time = new Date(dateStr).getTime();
+      return isNaN(time) ? 0 : time;
+    };
+
+    // SẮP XẾP: Đang cập nhật lên đầu -> Sau đó xếp theo ngày cập nhật mới nhất
+    blMovies.sort((a: any, b: any) => {
+      const isOngoingA = checkIsOngoing(a);
+      const isOngoingB = checkIsOngoing(b);
+
+      if (isOngoingA && !isOngoingB) return -1; // a đang chiếu -> đưa lên trước
+      if (!isOngoingA && isOngoingB) return 1;  // b đang chiếu -> đưa lên trước
+
+      // Cùng trạng thái thì phim nào mới cập nhật hơn sẽ xếp trước
       return parseDate(b) - parseDate(a);
     });
 
