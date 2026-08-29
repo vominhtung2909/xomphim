@@ -93,15 +93,6 @@ function findCountrySlug(countryName: string): string {
     .replace(/\s+/g, '-');
 }
 
-function findTypeSlug(typeName: string): string {
-  const clean = typeName.trim().toLowerCase();
-  if (clean.includes('bộ') || clean.includes('series')) return 'phim-bo';
-  if (clean.includes('lẻ') || clean.includes('single')) return 'phim-le';
-  if (clean.includes('hoạt hình') || clean.includes('anime')) return 'hoat-hinh';
-  if (clean.includes('tv') || clean.includes('show')) return 'tv-shows';
-  return 'phim-bo';
-}
-
 interface WatchViewProps {
   movie: MovieDetail;
   initialServerIndex?: number;
@@ -152,13 +143,12 @@ export const WatchView: React.FC<WatchViewProps> = ({
         activeEpisode.slug
       );
 
-      // Track watched episode in local component state
       const key = `${movie.slug}_${currentServerIndex}_${currentEpisodeIndex}`;
       setWatchedEpisodes((prev) => ({ ...prev, [key]: true }));
     }
   }, [movie, currentServerIndex, currentEpisodeIndex, currentServer, activeEpisode]);
 
-  // Dynamically inject SEO metadata & Schema.org Movie / Breadcrumb JSON-LD for rich snippets
+  // Dynamically inject JSON-LD Schema
   useEffect(() => {
     if (movie) {
       injectMovieSchema(movie, activeEpisode?.name);
@@ -190,7 +180,6 @@ export const WatchView: React.FC<WatchViewProps> = ({
     };
   }, [movie, activeEpisode?.name]);
 
-  // Scroll to player smoothly when episode changes
   const handleSelectEpisode = (epIdx: number) => {
     setCurrentEpisodeIndex(epIdx);
     setPlayerKey(Date.now());
@@ -234,7 +223,6 @@ export const WatchView: React.FC<WatchViewProps> = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  // Chunking episodes for fast navigation if more than 50 episodes
   const CHUNK_SIZE = 50;
   const totalChunks = Math.ceil(episodes.length / CHUNK_SIZE);
   const currentChunkEpisodes =
@@ -242,7 +230,6 @@ export const WatchView: React.FC<WatchViewProps> = ({
       ? episodes.slice(activeChunk * CHUNK_SIZE, (activeChunk + 1) * CHUNK_SIZE)
       : episodes;
 
-  // Filter episodes by search input
   const filteredEpisodes = episodeSearch.trim()
     ? episodes.filter((ep) =>
         ep.name.toLowerCase().includes(episodeSearch.trim().toLowerCase()) ||
@@ -250,14 +237,13 @@ export const WatchView: React.FC<WatchViewProps> = ({
       )
     : currentChunkEpisodes;
 
-  // Extract categories metadata
   const categoriesList: string[] = [];
   let countryName = '';
   let releaseYear = '';
   let formatType = '';
   let statusName = '';
 
-  if (movie.category) {
+  if (movie?.category) {
     try {
       const catObj = movie.category as Record<string, { group?: { name: string }; list?: { name: string }[] }>;
       Object.values(catObj).forEach((group) => {
@@ -285,13 +271,12 @@ export const WatchView: React.FC<WatchViewProps> = ({
     }
   }
 
-  // Determine Classification (Phân loại): "Phim Bộ", "Phim Lẻ", "Hoạt Hình & Anime", "TV Shows"
   const allMetaStrings = [
     formatType,
     ...categoriesList,
-    movie.name || '',
-    movie.original_name || '',
-    movie.slug || '',
+    movie?.name || '',
+    movie?.original_name || '',
+    movie?.slug || '',
   ].map((s) => s.toLowerCase());
 
   let classificationName = 'Phim Bộ';
@@ -328,8 +313,8 @@ export const WatchView: React.FC<WatchViewProps> = ({
 
     const isExplicitSeries =
       allMetaStrings.some((s) => s.includes('phim bộ') || s.includes('phim bo') || s.includes('series') || s.includes('drama')) ||
-      (movie.total_episodes && movie.total_episodes > 1) ||
-      (movie.current_episode &&
+      (movie?.total_episodes && movie.total_episodes > 1) ||
+      (movie?.current_episode &&
         (movie.current_episode.toLowerCase().includes('tập') ||
           movie.current_episode.includes('/') ||
           (/\d+/.test(movie.current_episode) && !movie.current_episode.toLowerCase().includes('full'))));
@@ -340,7 +325,7 @@ export const WatchView: React.FC<WatchViewProps> = ({
     } else if (isExplicitSeries) {
       classificationName = 'Phim Bộ';
       classificationSlug = 'phim-bo';
-    } else if (movie.total_episodes === 1) {
+    } else if (movie?.total_episodes === 1) {
       classificationName = 'Phim Lẻ';
       classificationSlug = 'phim-le';
     } else {
@@ -349,9 +334,8 @@ export const WatchView: React.FC<WatchViewProps> = ({
     }
   }
 
-  // Determine Status (Trạng thái): Latest episode or "Hoàn thành" if ended
   let statusDisplay = '';
-  const currentEpRaw = (movie.current_episode || '').trim();
+  const currentEpRaw = (movie?.current_episode || '').trim();
   const currentEpLower = currentEpRaw.toLowerCase();
   const statusNameLower = statusName.toLowerCase();
 
@@ -371,13 +355,11 @@ export const WatchView: React.FC<WatchViewProps> = ({
     isEnded = true;
   }
 
-  // Check for X/X episode format e.g. "16/16", "Tập 16/16"
   const slashMatch = currentEpRaw.match(/(\d+)\s*\/\s*(\d+)/);
   if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[1] === slashMatch[2]) {
     isEnded = true;
   }
 
-  // Check if single movie with full/1 episode
   if (classificationSlug === 'phim-le' && (currentEpLower.includes('full') || !currentEpRaw || currentEpRaw === '1/1' || isEnded)) {
     isEnded = true;
   }
@@ -390,10 +372,10 @@ export const WatchView: React.FC<WatchViewProps> = ({
     } else {
       statusDisplay = currentEpRaw;
     }
-  } else if (movie.total_episodes) {
+  } else if (movie?.total_episodes) {
     statusDisplay = `Tập ${movie.total_episodes}`;
   } else {
-    const allEps = movie.episodes?.[0]?.items || [];
+    const allEps = movie?.episodes?.[0]?.items || [];
     if (allEps.length > 0) {
       const lastEp = allEps[allEps.length - 1];
       statusDisplay = lastEp.name.toLowerCase().startsWith('tập') ? lastEp.name : `Tập ${lastEp.name}`;
@@ -402,461 +384,494 @@ export const WatchView: React.FC<WatchViewProps> = ({
     }
   }
 
+  // Chuẩn bị biến metadata phục vụ SEO (React 19)
+  const seoMovieName = movie?.name || 'Xem Phim Online';
+  const seoOriginalName = movie?.original_name ? ` (${movie.original_name})` : '';
+  const seoEpisodeText = activeEpisode?.name ? ` - Tập ${activeEpisode.name}` : '';
+  const seoTitle = `Xem Phim ${seoMovieName}${seoOriginalName}${seoEpisodeText} Full HD Vietsub | Xóm Phim`;
+  
+  const seoDescription = movie?.description
+    ? movie.description.replace(/<[^>]*>?/gm, '').slice(0, 160)
+    : `Xem phim ${seoMovieName} trọn bộ phụ đề Tiếng Việt chất lượng cao tại Xóm Phim.`;
+
+  const seoImage = movie?.thumb_url || movie?.poster_url || 'https://xomphim.top/default-poster.jpg';
+  const seoUrl = `https://xomphim.top/phim/${movie?.slug || ''}`;
+
   return (
-    <div className="relative w-full pt-16 sm:pt-20 pb-12 sm:pb-16 space-y-4 sm:space-y-8 animate-in fade-in duration-300">
-      {/* Cinema Lights Off Dimmer Overlay */}
-      {isLightsOff && (
-        <div
-          onClick={() => setIsLightsOff(false)}
-          className="fixed inset-0 bg-black/95 z-40 backdrop-blur-md cursor-pointer transition-opacity duration-300 flex items-start justify-center pt-24"
-        >
-          <div className="bg-[#181818] text-white px-5 py-2.5 rounded-full border border-white/20 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-2xl">
-            <Sun className="w-4 h-4 text-purple-400" />
-            Nhấn vào bất kỳ đâu để bật lại đèn giao diện
-          </div>
-        </div>
-      )}
+    <>
+      {/* ================= THẺ SEO METADATA TRỰC TIẾP (REACT 19) ================= */}
+      <title>{seoTitle}</title>
+      <meta name="description" content={seoDescription} />
+      <link rel="canonical" href={seoUrl} />
 
-      <div className="w-full max-w-full px-0 lg:px-[40px] space-y-3 sm:space-y-6 box-border">
-        {/* Breadcrumb & Navigation Bar */}
-        <div className="px-[15px] md:px-[30px] lg:px-0 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
-          <button
-            onClick={onBack}
-            className="hidden lg:flex items-center gap-2 text-slate-300 hover:text-white font-bold px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/20 transition-all cursor-pointer shadow-sm"
+      {/* Open Graph (Facebook, Zalo, Telegram...) */}
+      <meta property="og:type" content="video.movie" />
+      <meta property="og:site_name" content="Xóm Phim" />
+      <meta property="og:url" content={seoUrl} />
+      <meta property="og:title" content={seoTitle} />
+      <meta property="og:description" content={seoDescription} />
+      <meta property="og:image" content={seoImage} />
+      <meta property="og:image:alt" content={seoMovieName} />
+
+      {/* Twitter Card */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={seoTitle} />
+      <meta name="twitter:description" content={seoDescription} />
+      <meta name="twitter:image" content={seoImage} />
+      {/* ======================================================================== */}
+
+      <div className="relative w-full pt-16 sm:pt-20 pb-12 sm:pb-16 space-y-4 sm:space-y-8 animate-in fade-in duration-300">
+        {/* Cinema Lights Off Dimmer Overlay */}
+        {isLightsOff && (
+          <div
+            onClick={() => setIsLightsOff(false)}
+            className="fixed inset-0 bg-black/95 z-40 backdrop-blur-md cursor-pointer transition-opacity duration-300 flex items-start justify-center pt-24"
           >
-            <ArrowLeft className="w-4 h-4 text-purple-400" />
-            <span>Quay lại trang chủ</span>
-          </button>
-
-          <div className="flex items-center gap-2 text-slate-400 overflow-x-auto py-1">
-            <span className="text-slate-500">Phim:</span>
-            <span className="text-white font-bold truncate max-w-[200px] sm:max-w-md">
-              {movie.name}
-            </span>
-            {activeEpisode && (
-              <>
-                <span className="text-slate-600">/</span>
-                <span className="text-purple-300 font-bold bg-purple-600/20 px-3 py-0.5 rounded-lg border border-purple-500/40">
-                  Tập {activeEpisode.name}
-                </span>
-              </>
-            )}
+            <div className="bg-[#181818] text-white px-5 py-2.5 rounded-full border border-white/20 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-2xl">
+              <Sun className="w-4 h-4 text-purple-400" />
+              Nhấn vào bất kỳ đâu để bật lại đèn giao diện
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Video Player Container */}
-        <div ref={playerRef} className="relative z-40 w-full transition-all duration-300">
-          <div className="relative rounded-none lg:rounded-2xl overflow-hidden bg-black border-y lg:border border-white/15 shadow-2xl">
-            {/* Embedded Iframe Player */}
-            <div className="relative w-full aspect-video bg-black flex items-center justify-center">
-              {activeEpisode?.embed ? (
-                <iframe
-                  key={`${playerKey}_${activeEpisode.embed}`}
-                  src={activeEpisode.embed}
-                  title={`${movie.name} - Tập ${activeEpisode.name}`}
-                  className="w-full h-full border-0 absolute inset-0"
-                  allowFullScreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                />
-              ) : (
-                <div className="text-center p-8 space-y-4">
-                  <AlertTriangle className="w-12 h-12 text-pink-500 mx-auto animate-bounce" />
-                  <p className="text-white text-sm sm:text-base font-bold">
-                    Đang tải hoặc không tìm thấy nguồn phát cho tập này.
-                  </p>
-                  <button
-                    onClick={handleReloadPlayer}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold shadow-lg"
-                  >
-                    Tải lại trình phát
-                  </button>
-                </div>
+        <div className="w-full max-w-full px-0 lg:px-[40px] space-y-3 sm:space-y-6 box-border">
+          {/* Breadcrumb & Navigation Bar */}
+          <div className="px-[15px] md:px-[30px] lg:px-0 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+            <button
+              onClick={onBack}
+              className="hidden lg:flex items-center gap-2 text-slate-300 hover:text-white font-bold px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/20 transition-all cursor-pointer shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4 text-purple-400" />
+              <span>Quay lại trang chủ</span>
+            </button>
+
+            <div className="flex items-center gap-2 text-slate-400 overflow-x-auto py-1">
+              <span className="text-slate-500">Phim:</span>
+              <span className="text-white font-bold truncate max-w-[200px] sm:max-w-md">
+                {movie.name}
+              </span>
+              {activeEpisode && (
+                <>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-purple-300 font-bold bg-purple-600/20 px-3 py-0.5 rounded-lg border border-purple-500/40">
+                    Tập {activeEpisode.name}
+                  </span>
+                </>
               )}
             </div>
+          </div>
 
-            {/* Quick Player Control Toolbar */}
-            <div className="p-2 sm:p-4 bg-[#0d0d0d] border-t border-white/10 flex items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm">
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <button
-                  onClick={handlePrevEpisode}
-                  disabled={currentEpisodeIndex <= 0}
-                  className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="whitespace-nowrap">Tập trước</span>
-                </button>
-
-                <button
-                  onClick={handleNextEpisode}
-                  disabled={currentEpisodeIndex >= episodes.length - 1}
-                  className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0"
-                >
-                  <span className="whitespace-nowrap">Tập tiếp theo</span>
-                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-
-                <button
-                  onClick={handleReloadPlayer}
-                  title="Tải lại trình phát nếu gặp sự cố"
-                  className="hidden lg:flex items-center justify-center p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-purple-400 transition-colors cursor-pointer shrink-0"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
+          {/* Video Player Container */}
+          <div ref={playerRef} className="relative z-40 w-full transition-all duration-300">
+            <div className="relative rounded-none lg:rounded-2xl overflow-hidden bg-black border-y lg:border border-white/15 shadow-2xl">
+              {/* Embedded Iframe Player */}
+              <div className="relative w-full aspect-video bg-black flex items-center justify-center">
+                {activeEpisode?.embed ? (
+                  <iframe
+                    key={`${playerKey}_${activeEpisode.embed}`}
+                    src={activeEpisode.embed}
+                    title={`${movie.name} - Tập ${activeEpisode.name}`}
+                    className="w-full h-full border-0 absolute inset-0"
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  />
+                ) : (
+                  <div className="text-center p-8 space-y-4">
+                    <AlertTriangle className="w-12 h-12 text-pink-500 mx-auto animate-bounce" />
+                    <p className="text-white text-sm sm:text-base font-bold">
+                      Đang tải hoặc không tìm thấy nguồn phát cho tập này.
+                    </p>
+                    <button
+                      onClick={handleReloadPlayer}
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold shadow-lg"
+                    >
+                      Tải lại trình phát
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Right Toolbar Controls: [Rạp Phim (Tắt Đèn)] -> [Lưu Yêu Thích] */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                {/* 1. Cinema mode (Rạp Phim (Tắt Đèn)) */}
-                <button
-                  onClick={() => setIsLightsOff(!isLightsOff)}
-                  className={`flex items-center justify-center gap-1.5 p-2 sm:px-3.5 sm:py-2 rounded-xl border transition-colors font-semibold cursor-pointer shrink-0 ${
-                    isLightsOff
-                      ? 'bg-pink-600/30 border-pink-500 text-pink-300'
-                      : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white border-transparent'
-                  }`}
-                  title="Chế độ rạp phim (Tắt đèn)"
-                >
-                  <Moon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Rạp Phim (Tắt Đèn)</span>
-                </button>
+              {/* Quick Player Control Toolbar */}
+              <div className="p-2 sm:p-4 bg-[#0d0d0d] border-t border-white/10 flex items-center justify-between gap-1.5 sm:gap-3 text-xs sm:text-sm">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button
+                    onClick={handlePrevEpisode}
+                    disabled={currentEpisodeIndex <= 0}
+                    className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="whitespace-nowrap">Tập trước</span>
+                  </button>
 
-                {/* 2. Lưu Yêu Thích */}
-                <button
-                  onClick={handleToggleBookmark}
-                  className={`flex items-center justify-center gap-1.5 p-2 sm:px-3.5 sm:py-2 rounded-xl border transition-colors font-semibold cursor-pointer shrink-0 ${
-                    isSaved
-                      ? 'bg-pink-600 border-pink-500 text-white shadow-md shadow-pink-600/30'
-                      : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white border-transparent'
-                  }`}
-                  title={isSaved ? 'Đã lưu vào danh sách yêu thích' : 'Lưu phim vào danh sách yêu thích'}
-                >
-                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-white text-white' : ''}`} />
-                  <span className="hidden sm:inline">{isSaved ? 'Đã Yêu Thích' : 'Lưu Yêu Thích'}</span>
-                </button>
+                  <button
+                    onClick={handleNextEpisode}
+                    disabled={currentEpisodeIndex >= episodes.length - 1}
+                    className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0"
+                  >
+                    <span className="whitespace-nowrap">Tập tiếp theo</span>
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+
+                  <button
+                    onClick={handleReloadPlayer}
+                    title="Tải lại trình phát nếu gặp sự cố"
+                    className="hidden lg:flex items-center justify-center p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-purple-400 transition-colors cursor-pointer shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Right Toolbar Controls */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button
+                    onClick={() => setIsLightsOff(!isLightsOff)}
+                    className={`flex items-center justify-center gap-1.5 p-2 sm:px-3.5 sm:py-2 rounded-xl border transition-colors font-semibold cursor-pointer shrink-0 ${
+                      isLightsOff
+                        ? 'bg-pink-600/30 border-pink-500 text-pink-300'
+                        : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white border-transparent'
+                    }`}
+                    title="Chế độ rạp phim (Tắt đèn)"
+                  >
+                    <Moon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Rạp Phim (Tắt Đèn)</span>
+                  </button>
+
+                  <button
+                    onClick={handleToggleBookmark}
+                    className={`flex items-center justify-center gap-1.5 p-2 sm:px-3.5 sm:py-2 rounded-xl border transition-colors font-semibold cursor-pointer shrink-0 ${
+                      isSaved
+                        ? 'bg-pink-600 border-pink-500 text-white shadow-md shadow-pink-600/30'
+                        : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white border-transparent'
+                    }`}
+                    title={isSaved ? 'Đã lưu vào danh sách yêu thích' : 'Lưu phim vào danh sách yêu thích'}
+                  >
+                    <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-white text-white' : ''}`} />
+                    <span className="hidden sm:inline">{isSaved ? 'Đã Yêu Thích' : 'Lưu Yêu Thích'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Server & Episode Selector Card */}
-        <div className="glass-panel w-full rounded-none lg:rounded-2xl border-x-0 lg:border border-y lg:border-white/10 p-3.5 sm:p-5 md:p-6 space-y-3 sm:space-y-5">
-          {/* Server Switcher */}
-          {servers.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2 sm:mb-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300">
-                <Server className="w-4 h-4 text-purple-400" />
-                <span>Chọn Nguồn Phát (Server):</span>
-              </div>
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2.5">
-                {servers.map((server, sIndex) => (
-                  <button
-                    key={sIndex}
-                    onClick={() => handleSelectServer(sIndex)}
-                    className={`flex items-center justify-between sm:justify-start gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all min-w-0 ${
-                      currentServerIndex === sIndex
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-600/30'
-                        : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-                      <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
-                      <span className="whitespace-nowrap">{server.server_name}</span>
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-black/40 text-slate-300 font-mono shrink-0 ml-0.5">
-                      {server.items.length} tập
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Episode Filter & Chunk navigation */}
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-2.5 sm:mb-3 border-t border-white/10 pt-3 sm:pt-4">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300">
-                <Layers className="w-4 h-4 text-pink-400" />
-                <span>Danh Sách Tập Phim ({episodes.length} tập)</span>
-              </div>
-
-              {/* Fast episode search */}
-              <div className="w-full sm:w-64">
-                <input
-                  type="text"
-                  placeholder="Tìm số tập (VD: 1, 10, 50)..."
-                  value={episodeSearch}
-                  onChange={(e) => setEpisodeSearch(e.target.value)}
-                  className="w-full bg-white/10 border border-white/15 focus:border-purple-500 rounded-xl px-3.5 py-1.5 text-xs sm:text-sm text-white placeholder-slate-400 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Chunks Tabs if total episodes > 50 */}
-            {totalChunks > 1 && !episodeSearch && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {Array.from({ length: totalChunks }).map((_, cIdx) => {
-                  const start = cIdx * CHUNK_SIZE + 1;
-                  const end = Math.min((cIdx + 1) * CHUNK_SIZE, episodes.length);
-                  return (
+          {/* Server & Episode Selector Card */}
+          <div className="glass-panel w-full rounded-none lg:rounded-2xl border-x-0 lg:border border-y lg:border-white/10 p-3.5 sm:p-5 md:p-6 space-y-3 sm:space-y-5">
+            {/* Server Switcher */}
+            {servers.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2 sm:mb-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300">
+                  <Server className="w-4 h-4 text-purple-400" />
+                  <span>Chọn Nguồn Phát (Server):</span>
+                </div>
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2.5">
+                  {servers.map((server, sIndex) => (
                     <button
-                      key={cIdx}
-                      onClick={() => setActiveChunk(cIdx)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        activeChunk === cIdx
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                      key={sIndex}
+                      onClick={() => handleSelectServer(sIndex)}
+                      className={`flex items-center justify-between sm:justify-start gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all min-w-0 ${
+                        currentServerIndex === sIndex
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-600/30'
+                          : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10'
                       }`}
                     >
-                      Tập {start} - {end}
+                      <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                        <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
+                        <span className="whitespace-nowrap">{server.server_name}</span>
+                      </div>
+                      <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-black/40 text-slate-300 font-mono shrink-0 ml-0.5">
+                        {server.items.length} tập
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Episode Filter & Chunk navigation */}
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-2.5 sm:mb-3 border-t border-white/10 pt-3 sm:pt-4">
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300">
+                  <Layers className="w-4 h-4 text-pink-400" />
+                  <span>Danh Sách Tập Phim ({episodes.length} tập)</span>
+                </div>
+
+                {/* Fast episode search */}
+                <div className="w-full sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="Tìm số tập (VD: 1, 10, 50)..."
+                    value={episodeSearch}
+                    onChange={(e) => setEpisodeSearch(e.target.value)}
+                    className="w-full bg-white/10 border border-white/15 focus:border-purple-500 rounded-xl px-3.5 py-1.5 text-xs sm:text-sm text-white placeholder-slate-400 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Chunks Tabs if total episodes > 50 */}
+              {totalChunks > 1 && !episodeSearch && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {Array.from({ length: totalChunks }).map((_, cIdx) => {
+                    const start = cIdx * CHUNK_SIZE + 1;
+                    const end = Math.min((cIdx + 1) * CHUNK_SIZE, episodes.length);
+                    return (
+                      <button
+                        key={cIdx}
+                        onClick={() => setActiveChunk(cIdx)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          activeChunk === cIdx
+                            ? 'bg-purple-600 text-white shadow-md'
+                            : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                        }`}
+                      >
+                        Tập {start} - {end}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Episode Buttons Grid */}
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                {filteredEpisodes.map((ep, idx) => {
+                  const originalIndex = episodes.findIndex((e) => e.slug === ep.slug);
+                  const isSelected = originalIndex === currentEpisodeIndex;
+                  const isWatched = watchedEpisodes[`${movie.slug}_${currentServerIndex}_${originalIndex}`];
+
+                  return (
+                    <button
+                      key={ep.slug || idx}
+                      id={`btn-episode-${ep.slug}`}
+                      onClick={() => handleSelectEpisode(originalIndex)}
+                      className={`group relative py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col items-center justify-center gap-0.5 border ${
+                        isSelected
+                          ? 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white border-transparent shadow-lg shadow-purple-600/40 transform scale-105 z-10'
+                          : 'bg-white/5 text-slate-200 hover:bg-white/15 hover:text-white border-white/10'
+                      }`}
+                    >
+                      <span>{ep.name}</span>
+                      {isWatched && !isSelected && (
+                        <CheckCircle2 className="w-3 h-3 text-purple-400" />
+                      )}
                     </button>
                   );
                 })}
               </div>
-            )}
 
-            {/* Episode Buttons Grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
-              {filteredEpisodes.map((ep, idx) => {
-                const originalIndex = episodes.findIndex((e) => e.slug === ep.slug);
-                const isSelected = originalIndex === currentEpisodeIndex;
-                const isWatched = watchedEpisodes[`${movie.slug}_${currentServerIndex}_${originalIndex}`];
-
-                return (
-                  <button
-                    key={ep.slug || idx}
-                    id={`btn-episode-${ep.slug}`}
-                    onClick={() => handleSelectEpisode(originalIndex)}
-                    className={`group relative py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col items-center justify-center gap-0.5 border ${
-                      isSelected
-                        ? 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white border-transparent shadow-lg shadow-purple-600/40 transform scale-105 z-10'
-                        : 'bg-white/5 text-slate-200 hover:bg-white/15 hover:text-white border-white/10'
-                    }`}
-                  >
-                    <span>{ep.name}</span>
-                    {isWatched && !isSelected && (
-                      <CheckCircle2 className="w-3 h-3 text-purple-400" />
-                    )}
-                  </button>
-                );
-              })}
+              {filteredEpisodes.length === 0 && (
+                <p className="text-xs text-slate-500 text-center py-6">
+                  Không tìm thấy tập nào khớp với &quot;{episodeSearch}&quot;
+                </p>
+              )}
             </div>
-
-            {filteredEpisodes.length === 0 && (
-              <p className="text-xs text-slate-500 text-center py-6">
-                Không tìm thấy tập nào khớp với &quot;{episodeSearch}&quot;
-              </p>
-            )}
           </div>
-        </div>
 
-        {/* Movie Info & Synopsis Card - Clean Infographic Layout (1 column on mobile/tablet portrait, 2 columns on desktop) */}
-        <div className="glass-panel w-full rounded-none lg:rounded-2xl border-x-0 lg:border border-y lg:border-white/10 p-4 sm:p-6 lg:p-7">
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-            {/* Left / Top: Poster */}
-            <div className="w-full lg:w-64 shrink-0 mx-auto lg:mx-0 max-w-[240px] lg:max-w-none">
-              <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 aspect-[2/3] w-full bg-[#0d0d0d]">
-                <img
-                  src={movie.thumb_url || movie.poster_url}
-                  alt={movie.name}
-                  className="w-full h-full object-cover object-center rounded-2xl"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      'https://placehold.co/300x450/181818/ffffff?text=Xóm+Phim';
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Right / Bottom: Movie Information */}
-            <div className="flex-1 min-w-0 space-y-4 w-full">
-              {/* Title & Subtitle */}
-              <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white font-heading tracking-tight">
-                  {movie.name}
-                </h1>
-                {movie.original_name && (
-                  <p className="text-sm sm:text-base text-purple-400 font-semibold mt-1">
-                    {movie.original_name}
-                  </p>
-                )}
+          {/* Movie Info & Synopsis Card */}
+          <div className="glass-panel w-full rounded-none lg:rounded-2xl border-x-0 lg:border border-y lg:border-white/10 p-4 sm:p-6 lg:p-7">
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+              {/* Left / Top: Poster */}
+              <div className="w-full lg:w-64 shrink-0 mx-auto lg:mx-0 max-w-[240px] lg:max-w-none">
+                <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 aspect-[2/3] w-full bg-[#0d0d0d]">
+                  <img
+                    src={movie.thumb_url || movie.poster_url}
+                    alt={movie.name}
+                    className="w-full h-full object-cover object-center rounded-2xl"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://placehold.co/300x450/181818/ffffff?text=Xóm+Phim';
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* Info Table: 1 Column on Mobile & Tablet Portrait, 2 Columns on Desktop (lg:) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1 pt-3 border-t border-white/10 text-xs sm:text-sm">
-                {/* Cột 1 (Column 1) */}
-                <div className="space-y-1">
-                  {/* 1. Trạng thái */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                        <Tv className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Trạng thái</span>
-                    </div>
-                    <div className="text-white font-semibold flex-1 leading-relaxed">
-                      {statusDisplay}
-                    </div>
-                  </div>
-
-                  {/* 2. Đạo diễn */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/20">
-                        <User className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Đạo diễn</span>
-                    </div>
-                    <div className="text-white font-semibold flex-1 break-words leading-relaxed">
-                      {movie.director || 'Đang cập nhật'}
-                    </div>
-                  </div>
-
-                  {/* 3. Phân loại */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                        <Film className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Phân loại</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-1 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => onSelectCategory?.('type', classificationSlug, classificationName)}
-                        className="text-white font-semibold hover:text-purple-400 transition-colors cursor-pointer hover:underline underline-offset-4 text-left"
-                        title={`Xem danh sách ${classificationName}`}
-                      >
-                        {classificationName}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 4. Năm phát hành */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06] lg:border-b-0">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                        <Calendar className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Năm phát hành</span>
-                    </div>
-                    <div className="text-white font-semibold flex-1">
-                      {releaseYear || '2025'}
-                    </div>
-                  </div>
+              {/* Right / Bottom: Movie Information */}
+              <div className="flex-1 min-w-0 space-y-4 w-full">
+                {/* Title & Subtitle */}
+                <div>
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white font-heading tracking-tight">
+                    {movie.name}
+                  </h1>
+                  {movie.original_name && (
+                    <p className="text-sm sm:text-base text-purple-400 font-semibold mt-1">
+                      {movie.original_name}
+                    </p>
+                  )}
                 </div>
 
-                {/* Cột 2 (Column 2) */}
-                <div className="space-y-1">
-                  {/* 1. Thời lượng */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        <Clock className="w-3.5 h-3.5" />
+                {/* Info Table */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1 pt-3 border-t border-white/10 text-xs sm:text-sm">
+                  {/* Cột 1 */}
+                  <div className="space-y-1">
+                    {/* 1. Trạng thái */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                          <Tv className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Trạng thái</span>
                       </div>
-                      <span>Thời lượng</span>
+                      <div className="text-white font-semibold flex-1 leading-relaxed">
+                        {statusDisplay}
+                      </div>
                     </div>
-                    <div className="text-white font-semibold flex-1 leading-relaxed">
-                      {movie.time || 'Đang cập nhật'}
-                    </div>
-                  </div>
 
-                  {/* 2. Diễn viên */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <Users className="w-3.5 h-3.5" />
+                    {/* 2. Đạo diễn */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                          <User className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Đạo diễn</span>
                       </div>
-                      <span>Diễn viên</span>
+                      <div className="text-white font-semibold flex-1 break-words leading-relaxed">
+                        {movie.director || 'Đang cập nhật'}
+                      </div>
                     </div>
-                    <div className="text-white font-semibold flex-1 break-words leading-relaxed">
-                      {movie.casts || 'Đang cập nhật'}
-                    </div>
-                  </div>
 
-                  {/* 3. Thể loại */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                        <Tag className="w-3.5 h-3.5" />
+                    {/* 3. Phân loại */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          <Film className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Phân loại</span>
                       </div>
-                      <span>Thể loại</span>
-                    </div>
-                    <div className="flex items-center gap-x-3 gap-y-1.5 flex-1 flex-wrap">
-                      {categoriesList.length > 0 ? (
-                        categoriesList.map((cat, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => onSelectCategory?.('genre', findGenreSlug(cat), cat)}
-                            className="text-white font-semibold hover:text-purple-400 transition-colors cursor-pointer hover:underline underline-offset-4 text-left"
-                            title={`Xem các phim thuộc thể loại ${cat}`}
-                          >
-                            {cat}
-                          </button>
-                        ))
-                      ) : (
-                        <span className="text-slate-400">Đang cập nhật</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 4. Quốc gia */}
-                  <div className="flex items-start sm:items-center gap-3 py-2.5">
-                    <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
-                      <div className="p-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                        <Globe className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Quốc gia</span>
-                    </div>
-                    <div className="flex-1">
-                      {countryName ? (
+                      <div className="flex items-center gap-2 flex-1 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => onSelectCategory?.('country', findCountrySlug(countryName), countryName)}
+                          onClick={() => onSelectCategory?.('type', classificationSlug, classificationName)}
                           className="text-white font-semibold hover:text-purple-400 transition-colors cursor-pointer hover:underline underline-offset-4 text-left"
-                          title={`Xem các phim thuộc quốc gia ${countryName}`}
+                          title={`Xem danh sách ${classificationName}`}
                         >
-                          {countryName}
+                          {classificationName}
                         </button>
-                      ) : (
-                        <span className="text-white font-semibold">Châu Á</span>
-                      )}
+                      </div>
+                    </div>
+
+                    {/* 4. Năm phát hành */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06] lg:border-b-0">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                          <Calendar className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Năm phát hành</span>
+                      </div>
+                      <div className="text-white font-semibold flex-1">
+                        {releaseYear || '2025'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cột 2 */}
+                  <div className="space-y-1">
+                    {/* 1. Thời lượng */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <Clock className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Thời lượng</span>
+                      </div>
+                      <div className="text-white font-semibold flex-1 leading-relaxed">
+                        {movie.time || 'Đang cập nhật'}
+                      </div>
+                    </div>
+
+                    {/* 2. Diễn viên */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <Users className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Diễn viên</span>
+                      </div>
+                      <div className="text-white font-semibold flex-1 break-words leading-relaxed">
+                        {movie.casts || 'Đang cập nhật'}
+                      </div>
+                    </div>
+
+                    {/* 3. Thể loại */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5 border-b border-white/[0.06]">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                          <Tag className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Thể loại</span>
+                      </div>
+                      <div className="flex items-center gap-x-3 gap-y-1.5 flex-1 flex-wrap">
+                        {categoriesList.length > 0 ? (
+                          categoriesList.map((cat, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => onSelectCategory?.('genre', findGenreSlug(cat), cat)}
+                              className="text-white font-semibold hover:text-purple-400 transition-colors cursor-pointer hover:underline underline-offset-4 text-left"
+                              title={`Xem các phim thuộc thể loại ${cat}`}
+                            >
+                              {cat}
+                            </button>
+                          ))
+                        ) : (
+                          <span className="text-slate-400">Đang cập nhật</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 4. Quốc gia */}
+                    <div className="flex items-start sm:items-center gap-3 py-2.5">
+                      <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0 text-slate-400 font-medium">
+                        <div className="p-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          <Globe className="w-3.5 h-3.5" />
+                        </div>
+                        <span>Quốc gia</span>
+                      </div>
+                      <div className="flex-1">
+                        {countryName ? (
+                          <button
+                            type="button"
+                            onClick={() => onSelectCategory?.('country', findCountrySlug(countryName), countryName)}
+                            className="text-white font-semibold hover:text-purple-400 transition-colors cursor-pointer hover:underline underline-offset-4 text-left"
+                            title={`Xem các phim thuộc quốc gia ${countryName}`}
+                          >
+                            {countryName}
+                          </button>
+                        ) : (
+                          <span className="text-white font-semibold">Châu Á</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Synopsis Section */}
-              <div className="pt-2 space-y-2">
-                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">
-                  NỘI DUNG TÓM TẮT:
-                </h3>
-                <div className="text-xs sm:text-sm text-slate-300 leading-relaxed max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                  {movie.description
-                    ? movie.description.replace(/<[^>]*>?/gm, '')
-                    : 'Thông tin nội dung phim đang được cập nhật.'}
+                {/* Synopsis Section */}
+                <div className="pt-2 space-y-2">
+                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">
+                    NỘI DUNG TÓM TẮT:
+                  </h3>
+                  <div className="text-xs sm:text-sm text-slate-300 leading-relaxed max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                    {movie.description
+                      ? movie.description.replace(/<[^>]*>?/gm, '')
+                      : 'Thông tin nội dung phim đang được cập nhật.'}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Related Movies - Styled exactly like Home page MovieRow with Netflix horizontal smooth slider */}
-      {relatedMovies && relatedMovies.length > 0 && (
-        <div className="pt-4 w-full">
-          <MovieRow
-            title="Phim Đề Xuất Cùng Thể Loại"
-            subtitle="Khám phá các bộ phim bom tấn và đặc sắc cùng thể loại có thể bạn sẽ thích"
-            icon={<Sparkles className="w-5 h-5 text-purple-400" />}
-            movies={relatedMovies}
-            onSelectMovie={onSelectMovie}
-            onBookmarkChanged={onBookmarkChanged}
-          />
-        </div>
-      )}
-    </div>
+        {/* Related Movies */}
+        {relatedMovies && relatedMovies.length > 0 && (
+          <div className="pt-4 w-full">
+            <MovieRow
+              title="Phim Đề Xuất Cùng Thể Loại"
+              subtitle="Khám phá các bộ phim bom tấn và đặc sắc cùng thể loại có thể bạn sẽ thích"
+              icon={<Sparkles className="w-5 h-5 text-purple-400" />}
+              movies={relatedMovies}
+              onSelectMovie={onSelectMovie}
+              onBookmarkChanged={onBookmarkChanged}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 };
-
