@@ -304,20 +304,20 @@ export async function getMoviesForRow(
     return [];
   }
 }
-
 // Link CSV xuất bản từ Google Sheet của bạn
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQGYPjV2eNr_elQre2K5yGiWlcfAvR1r6Sp46YfWT0Sccw0xQYNDvxCBotnX9JlUX0YkBNvycXIfCwi/pub?gid=0&single=true&output=csv';
 
 /**
- * Lấy danh sách phim Đam Mỹ trực tiếp từ API URL / Slug trong Google Sheets
+ * Lấy danh sách phim Đam Mỹ trực tiếp từ Google Sheets và chuẩn hóa sang MovieItem
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
     const sheetRes = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${Date.now()}`);
     if (!sheetRes.ok) throw new Error('Không thể kết nối Google Sheets');
-    
+
     const csvText = await sheetRes.text();
 
+    // Bóc tách từng dòng trong Sheet
     const rawLines = csvText
       .split('\n')
       .map((line) => line.trim().replace(/^"|"$/g, '').replace(/\r/g, ''))
@@ -333,7 +333,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
 
     const moviePromises = rawLines.map(async (item) => {
       let slug = item;
-      // Tự động cắt lấy slug dù bạn dán bất kỳ định dạng link nào
       if (slug.includes('/film/')) {
         slug = slug.split('/film/')[1].replace(/\/$/, '');
       } else if (slug.includes('/phim/')) {
@@ -341,12 +340,30 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       } else if (slug.includes('/')) {
         slug = slug.substring(slug.lastIndexOf('/') + 1);
       }
-      
+
       slug = slug.trim().toLowerCase();
 
       try {
         const detail = await getMovieDetail(slug);
-        return detail as MovieItem;
+        if (!detail) return null;
+
+        // Chuẩn hóa cấu trúc MovieItem để giao diện render đúng
+        const itemObj: MovieItem = {
+          id: (detail as any).id || detail.slug,
+          name: detail.name,
+          slug: detail.slug,
+          original_name: detail.original_name || '',
+          thumb_url: detail.thumb_url || detail.poster_url || '',
+          poster_url: detail.poster_url || detail.thumb_url || '',
+          current_episode: detail.current_episode || '',
+          total_episodes: detail.total_episodes || 0,
+          time: detail.time || '',
+          quality: detail.quality || 'HD',
+          language: detail.language || 'Vietsub',
+          description: detail.description || '',
+          modified: (detail as any).modified || (detail as any).created || ''
+        };
+        return itemObj;
       } catch (err) {
         console.warn(`Không tìm thấy phim với slug: ${slug}`, err);
         return null;
@@ -358,18 +375,13 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
 
     const checkIsOngoing = (movie: any): boolean => {
       const epRaw = (movie?.current_episode || '').trim().toLowerCase();
-      const statusRaw = (movie?.status || '').trim().toLowerCase();
-
       if (
         epRaw.includes('full') ||
         epRaw.includes('hoàn tất') ||
         epRaw.includes('hoàn thành') ||
         epRaw.includes('trọn bộ') ||
         epRaw.includes('end') ||
-        epRaw.includes('đã kết thúc') ||
-        statusRaw.includes('hoàn tất') ||
-        statusRaw.includes('hoàn thành') ||
-        statusRaw.includes('completed')
+        epRaw.includes('đã kết thúc')
       ) {
         return false;
       }
@@ -388,6 +400,7 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       return isNaN(time) ? 0 : time;
     };
 
+    // Sắp xếp: Phim đang chiếu lên trước -> Phim mới cập nhật lên trước
     blMovies.sort((a: any, b: any) => {
       const isOngoingA = checkIsOngoing(a);
       const isOngoingB = checkIsOngoing(b);
