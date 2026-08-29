@@ -308,7 +308,7 @@ export async function getMoviesForRow(
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQGYPjV2eNr_elQre2K5yGiWlcfAvR1r6Sp46YfWT0Sccw0xQYNDvxCBotnX9JlUX0YkBNvycXIfCwi/pub?gid=0&single=true&output=csv';
 
 /**
- * Lấy danh sách phim Đam Mỹ trực tiếp từ Google Sheets và chuẩn hóa sang MovieItem
+ * Lấy danh sách phim Đam Mỹ trực tiếp từ Google Sheets
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
@@ -317,11 +317,11 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
 
     const csvText = await sheetRes.text();
 
-    // Bóc tách từng dòng trong Sheet
+    // 1. Tách dòng và chỉ lọc bỏ dòng tiêu đề "tên phim" hoặc dòng trống
     const rawLines = csvText
-      .split('\n')
-      .map((line) => line.trim().replace(/^"|"$/g, '').replace(/\r/g, ''))
-      .filter((line) => line.length > 0 && !line.toLowerCase().includes('tên phim') && !line.toLowerCase().includes('slug') && !line.toLowerCase().includes('api'));
+      .split(/\r?\n/)
+      .map((line) => line.trim().replace(/^"|"$/g, ''))
+      .filter((line) => line.length > 3 && !line.toLowerCase().startsWith('tên phim') && !line.toLowerCase().startsWith('stt'));
 
     if (rawLines.length === 0) {
       return {
@@ -331,23 +331,24 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       };
     }
 
+    // 2. Bóc tách slug từ mọi định dạng link
     const moviePromises = rawLines.map(async (item) => {
       let slug = item;
       if (slug.includes('/film/')) {
-        slug = slug.split('/film/')[1].replace(/\/$/, '');
+        slug = slug.split('/film/')[1].split('?')[0].replace(/\/$/, '');
       } else if (slug.includes('/phim/')) {
-        slug = slug.split('/phim/')[1].replace(/\/$/, '');
+        slug = slug.split('/phim/')[1].split('?')[0].replace(/\/$/, '');
       } else if (slug.includes('/')) {
         slug = slug.substring(slug.lastIndexOf('/') + 1);
       }
 
       slug = slug.trim().toLowerCase();
+      if (!slug) return null;
 
       try {
         const detail = await getMovieDetail(slug);
         if (!detail) return null;
 
-        // Chuẩn hóa cấu trúc MovieItem để giao diện render đúng
         const itemObj: MovieItem = {
           id: (detail as any).id || detail.slug,
           name: detail.name,
@@ -365,7 +366,7 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
         };
         return itemObj;
       } catch (err) {
-        console.warn(`Không tìm thấy phim với slug: ${slug}`, err);
+        console.warn(`Không thể tải phim: ${slug}`, err);
         return null;
       }
     });
@@ -373,6 +374,7 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
     const results = await Promise.all(moviePromises);
     const blMovies: MovieItem[] = results.filter((m): m is MovieItem => m !== null);
 
+    // 3. Phân loại phim đang cập nhật vs đã hoàn thành
     const checkIsOngoing = (movie: any): boolean => {
       const epRaw = (movie?.current_episode || '').trim().toLowerCase();
       if (
@@ -400,7 +402,7 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       return isNaN(time) ? 0 : time;
     };
 
-    // Sắp xếp: Phim đang chiếu lên trước -> Phim mới cập nhật lên trước
+    // 4. Ưu tiên: Phim đang chiếu -> Phim mới cập nhật lên đầu
     blMovies.sort((a: any, b: any) => {
       const isOngoingA = checkIsOngoing(a);
       const isOngoingB = checkIsOngoing(b);
