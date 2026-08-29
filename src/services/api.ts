@@ -54,14 +54,8 @@ export const COUNTRIES: CategoryOption[] = [
 const cache = new Map<string, { timestamp: number; data: unknown }>();
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
 const MOVIES_PER_PAGE_TARGET = 60;
-const API_PAGE_CHUNK = 6; // 6 pages of 10 items = 60 items
+const API_PAGE_CHUNK = 6;
 
-/**
- * Fetch wrapper with multi-tier failover:
- * 1. Vite proxy endpoint (/api-nguonc/...)
- * 2. Direct endpoint (https://phim.nguonc.com/api/...)
- * 3. Public CORS fallback
- */
 async function fetchApiEndpoint<T>(pathClean: string): Promise<T> {
   const cleanPath = pathClean.startsWith('/') ? pathClean.slice(1) : pathClean;
   const cacheKey = cleanPath;
@@ -104,12 +98,6 @@ async function fetchApiEndpoint<T>(pathClean: string): Promise<T> {
   throw lastError || new Error(`Không thể kết nối đến API: ${cleanPath}`);
 }
 
-/**
- * Intelligent pagination fetcher for 60 movies per page:
- * - Queries the first page first to check total_page
- * - Only queries subsequent pages that actually exist
- * - Avoids flooding the API with empty/redundant requests
- */
 async function fetchCategoryWith60Limit(
   urlBuilder: (apiPage: number) => string,
   userPage: number = 1
@@ -117,7 +105,6 @@ async function fetchCategoryWith60Limit(
   const startApiPage = (userPage - 1) * API_PAGE_CHUNK + 1;
 
   try {
-    // 1. Fetch the first API page
     const firstPath = urlBuilder(startApiPage);
     const firstRes = await fetchApiEndpoint<ApiResponseList>(firstPath).catch((err) => {
       console.warn(`Lỗi khi tải trang đầu ${startApiPage}:`, err);
@@ -137,7 +124,6 @@ async function fetchCategoryWith60Limit(
       };
     }
 
-    // If API returned 60+ items in a single response
     if (firstRes.items.length >= MOVIES_PER_PAGE_TARGET) {
       const totalItems = firstRes.paginate?.total_items || firstRes.items.length;
       return {
@@ -158,7 +144,6 @@ async function fetchCategoryWith60Limit(
     const totalApiPages = firstRes.paginate?.total_page ?? 1;
     const totalItems = firstRes.paginate?.total_items ?? mergedItems.length;
 
-    // 2. Only fetch additional pages if more exist
     if (totalApiPages > startApiPage && mergedItems.length < MOVIES_PER_PAGE_TARGET) {
       const maxApiPage = Math.min(startApiPage + API_PAGE_CHUNK - 1, totalApiPages);
       const remainingPages: number[] = [];
@@ -214,16 +199,10 @@ async function fetchCategoryWith60Limit(
   }
 }
 
-/**
- * Lấy danh sách phim mới nhất (60 phim/trang)
- */
 export async function getNewMovies(page = 1): Promise<ApiResponseList> {
   return fetchCategoryWith60Limit((p) => `films/phim-moi-cap-nhat?page=${p}`, page);
 }
 
-/**
- * Lấy danh sách theo phân loại: phim-bo, phim-le, hoat-hinh, tv-shows (60 phim/trang)
- */
 export async function getMoviesByType(typeSlug: string, page = 1): Promise<ApiResponseList> {
   if (typeSlug === 'phim-moi-cap-nhat') {
     return getNewMovies(page);
@@ -232,30 +211,24 @@ export async function getMoviesByType(typeSlug: string, page = 1): Promise<ApiRe
 }
 
 /**
- * Lấy danh sách phim theo thể loại (60 phim/trang)
+ * Lấy danh sách phim theo thể loại (Đã cấu hình tự chuyển hướng Đam Mỹ sang Sheet)
  */
 export async function getMoviesByGenre(genreSlug: string, page = 1): Promise<ApiResponseList> {
+  if (genreSlug === 'dam-my') {
+    return getBLMoviesFromSheet(page);
+  }
   return fetchCategoryWith60Limit((p) => `films/the-loai/${genreSlug}?page=${p}`, page);
 }
 
-/**
- * Lấy danh sách phim theo quốc gia (60 phim/trang)
- */
 export async function getMoviesByCountry(countrySlug: string, page = 1): Promise<ApiResponseList> {
   return fetchCategoryWith60Limit((p) => `films/quoc-gia/${countrySlug}?page=${p}`, page);
 }
 
-/**
- * Tìm kiếm phim theo từ khóa (60 phim/trang)
- */
 export async function searchMovies(keyword: string, page = 1): Promise<ApiResponseList> {
   const encoded = encodeURIComponent(keyword.trim());
   return fetchCategoryWith60Limit((p) => `films/search?keyword=${encoded}&page=${p}`, page);
 }
 
-/**
- * Tìm kiếm nhanh dùng cho live autocomplete trên thanh Search (chỉ tải 1 trang nhẹ)
- */
 export async function searchQuickSuggestions(keyword: string): Promise<MovieItem[]> {
   if (!keyword.trim()) return [];
   try {
@@ -267,9 +240,6 @@ export async function searchQuickSuggestions(keyword: string): Promise<MovieItem
   }
 }
 
-/**
- * Lấy chi tiết bộ phim và danh sách link xem phim (tập phim & embed iframe)
- */
 export async function getMovieDetail(slug: string): Promise<MovieDetail> {
   const data = await fetchApiEndpoint<ApiResponseDetail>(`film/${slug}`);
   if (data.status === 'success' && data.movie) {
@@ -278,15 +248,17 @@ export async function getMovieDetail(slug: string): Promise<MovieDetail> {
   throw new Error(data.msg || 'Không thể tải thông tin phim');
 }
 
-/**
- * Lấy danh sách 30 bộ phim cho hàng ngang (Horizontal Sliders) trên Trang chủ.
- */
 export async function getMoviesForRow(
   slug: string,
   type: 'type' | 'genre' | 'country' = 'type',
   targetCount = 30
 ): Promise<MovieItem[]> {
   try {
+    if (type === 'genre' && slug === 'dam-my') {
+      const blRes = await getBLMoviesFromSheet(1);
+      return (blRes.items || []).slice(0, targetCount);
+    }
+
     const getPath = (p: number) => {
       if (type === 'type') {
         return slug === 'phim-moi-cap-nhat' ? `films/phim-moi-cap-nhat?page=${p}` : `films/danh-sach/${slug}?page=${p}`;
@@ -332,14 +304,12 @@ export async function getMoviesForRow(
     return [];
   }
 }
+
 // Link CSV xuất bản từ Google Sheet của bạn
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQGYPjV2eNr_elQre2K5yGiWlcfAvR1r6Sp46YfWT0Sccw0xQYNDvxCBotnX9JlUX0YkBNvycXIfCwi/pub?gid=0&single=true&output=csv';
 
 /**
  * Lấy danh sách phim Đam Mỹ trực tiếp từ API URL / Slug trong Google Sheets
- * Ưu tiên:
- * 1. Phim đang cập nhật (đang chiếu) xếp lên đầu
- * 2. Phim có tập mới / chỉnh sửa gần nhất xếp trước
  */
 export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiResponseList> {
   try {
@@ -363,13 +333,16 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
 
     const moviePromises = rawLines.map(async (item) => {
       let slug = item;
-      if (item.includes('/film/')) {
-        slug = item.split('/film/')[1].replace(/\/$/, '');
-      } else if (item.includes('/phim/')) {
-        slug = item.split('/phim/')[1].replace(/\/$/, '');
-      } else if (item.startsWith('http')) {
-        slug = item.substring(item.lastIndexOf('/') + 1);
+      // Tự động cắt lấy slug dù bạn dán bất kỳ định dạng link nào
+      if (slug.includes('/film/')) {
+        slug = slug.split('/film/')[1].replace(/\/$/, '');
+      } else if (slug.includes('/phim/')) {
+        slug = slug.split('/phim/')[1].replace(/\/$/, '');
+      } else if (slug.includes('/')) {
+        slug = slug.substring(slug.lastIndexOf('/') + 1);
       }
+      
+      slug = slug.trim().toLowerCase();
 
       try {
         const detail = await getMovieDetail(slug);
@@ -383,12 +356,10 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
     const results = await Promise.all(moviePromises);
     const blMovies: MovieItem[] = results.filter((m): m is MovieItem => m !== null);
 
-    // Hàm kiểm tra phim đã kết thúc hay chưa
     const checkIsOngoing = (movie: any): boolean => {
       const epRaw = (movie?.current_episode || '').trim().toLowerCase();
       const statusRaw = (movie?.status || '').trim().toLowerCase();
 
-      // Nếu chứa các từ khóa kết thúc -> Đã hoàn thành (false)
       if (
         epRaw.includes('full') ||
         epRaw.includes('hoàn tất') ||
@@ -403,13 +374,11 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
         return false;
       }
 
-      // Nếu có định dạng 10/10, 16/16 -> Đã hoàn thành (false)
       const slashMatch = epRaw.match(/(\d+)\s*\/\s*(\d+)/);
       if (slashMatch && slashMatch[1] && slashMatch[2] && slashMatch[1] === slashMatch[2]) {
         return false;
       }
 
-      // Các trường hợp còn lại (Tập 1, Tập 7, Đang chiếu...) -> Đang cập nhật (true)
       return true;
     };
 
@@ -419,15 +388,13 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       return isNaN(time) ? 0 : time;
     };
 
-    // SẮP XẾP: Đang cập nhật lên đầu -> Sau đó xếp theo ngày cập nhật mới nhất
     blMovies.sort((a: any, b: any) => {
       const isOngoingA = checkIsOngoing(a);
       const isOngoingB = checkIsOngoing(b);
 
-      if (isOngoingA && !isOngoingB) return -1; // a đang chiếu -> đưa lên trước
-      if (!isOngoingA && isOngoingB) return 1;  // b đang chiếu -> đưa lên trước
+      if (isOngoingA && !isOngoingB) return -1;
+      if (!isOngoingA && isOngoingB) return 1;
 
-      // Cùng trạng thái thì phim nào mới cập nhật hơn sẽ xếp trước
       return parseDate(b) - parseDate(a);
     });
 
