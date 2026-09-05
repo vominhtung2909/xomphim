@@ -140,7 +140,27 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Monetag OnClick (Popunder) -->
-    <script>(function(s){s.dataset.zone='11730575',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <!-- Monetag OnClick: Giới hạn tối đa 1 lần mỗi 1 giờ -->
+    <script>
+      (function() {
+        const AD_KEY = 'monetag_last_pop';
+        const COOLDOWN = 60 * 60 * 1000; // 1 giờ
+        const lastPop = localStorage.getItem(AD_KEY);
+        const now = Date.now();
+
+        if (!lastPop || (now - Number(lastPop) > COOLDOWN)) {
+          const s = document.createElement('script');
+          s.dataset.zone = '11730575';
+          s.src = 'https://al5sm.com/tag.min.js';
+          
+          window.addEventListener('click', function recordClick() {
+            localStorage.setItem(AD_KEY, Date.now().toString());
+            window.removeEventListener('click', recordClick);
+          }, { once: true });
+
+          document.body.appendChild(s);
+        }
+      })();
+    </script>
   </body>
 </html>
