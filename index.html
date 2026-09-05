@@ -1,22 +1,8 @@
 <!doctype html>
 <html lang="vi" class="dark">
   <head>
+    <!-- Monetag Site Verification -->
     <meta name="monetag" content="a1f9900d6f653ad2dc4a00984d2641f7">
-    <script src="https://5gvci.com/act/files/tag.min.js?z=11730227" data-cfasync="false" async></script>
-    
-    <!-- Ép In-Page Push luôn hiển thị ở góc dưới màn hình -->
-    <style>
-      div[class*="-inpage-push"],
-      div[id*="-inpage-push"],
-      div[class*="inpage_push"],
-      div[id*="inpage_push"] {
-        top: auto !important;
-        bottom: 16px !important;
-        right: 16px !important;
-        left: auto !important;
-        z-index: 999999 !important;
-      }
-    </style>
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-N6NBJHMGS1"></script>
@@ -27,6 +13,7 @@
 
       gtag('config', 'G-N6NBJHMGS1');
     </script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Xóm Phim - Cả Xóm Cùng Xem Phim | Xem Phim HD Miễn Phí</title>
@@ -152,30 +139,8 @@
   <body class="bg-[#050505] text-[#e0e0e0] font-sans antialiased selection:bg-[#8b5cf6] selection:text-white min-h-screen overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- In-Page Push Script -->
-   <!-- In-Page Push với bộ định vị góc dưới tự động -->
-    <script>
-      (function(s){
-        s.dataset.zone = '11730411';
-        s.src = 'https://nap5k.com/tag.min.js';
-      })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
 
-      // Can thiệp ép khung quảng cáo nhảy xuống đáy
-      const fixAdPosition = () => {
-        const adElements = document.querySelectorAll('body > div, body > aside');
-        adElements.forEach(el => {
-          if (el.style.top && (el.style.position === 'fixed' || el.style.position === 'absolute') && el.id !== 'root') {
-            el.style.setProperty('top', 'auto', 'important');
-            el.style.setProperty('bottom', '16px', 'important');
-            el.style.setProperty('right', '16px', 'important');
-          }
-        });
-      };
-      const observer = new MutationObserver(fixAdPosition);
-      observer.observe(document.body, { childList: true, subtree: true });
-      setInterval(fixAdPosition, 1000);
-    </script>
-  </body>
-</html>
+    <!-- Monetag OnClick (Popunder) -->
+    <script>(function(s){s.dataset.zone='11730575',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
   </body>
 </html>
