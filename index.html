@@ -140,30 +140,40 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-  <!-- Direct Link: Chuyển tập phim mượt mà, mở quảng cáo qua tab mới song song -->
+    <!-- Direct Link: Mở tab quảng cáo khi chọn tập, khóa 1 giờ (60 phút) -->
     <script>
       (function() {
         const DIRECT_LINK = 'https://omg10.com/4/11736644';
+        const AD_KEY = 'xomphim_episode_cooldown';
+        const COOLDOWN = 60 * 60 * 1000; // 1 giờ (60 phút)
 
         document.addEventListener('click', function(e) {
           const target = e.target.closest('button, a');
           if (!target) return;
 
+          // Nhận diện nút số tập (chứa số hoặc nằm trong vùng danh sách tập)
           const text = target.innerText.trim();
           const isEpisodeBtn = /^\d+$/.test(text) || target.closest('[class*="episode"], [class*="tap"]');
 
           if (isEpisodeBtn) {
-            // Không can thiệp vào trang hiện tại để React chuyển sang đúng tập vừa bấm
-            // Kích hoạt mở tab quảng cáo song song qua liên kết ngầm
-            const link = document.createElement('a');
-            link.href = DIRECT_LINK;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const lastPop = localStorage.getItem(AD_KEY);
+            const now = Date.now();
+
+            // Nếu chưa bấm lần nào hoặc đã qua 1 tiếng
+            if (!lastPop || (now - Number(lastPop) > COOLDOWN)) {
+              localStorage.setItem(AD_KEY, now.toString());
+              
+              // Mở tab quảng cáo song song mà không gián đoạn việc tải tập phim
+              const link = document.createElement('a');
+              link.href = DIRECT_LINK;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
           }
-        }, false); // Đặt false (bubbling) để React nhận lệnh click và đổi tập trước
+        }, false);
       })();
     </script>
   </body>
