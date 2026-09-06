@@ -140,7 +140,7 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Direct Link: Luôn mở tab quảng cáo mỗi khi bấm vào nút số tập phim -->
+    <!-- Direct Link Popunder: Mở quảng cáo ngầm và kéo tiêu điểm lại trang web -->
     <script>
       (function() {
         const DIRECT_LINK = 'https://omg10.com/4/11736644';
@@ -149,12 +149,16 @@
           const target = e.target.closest('button, a');
           if (!target) return;
 
-          // Nhận diện nút số tập (chỉ chứa số hoặc nằm trong vùng danh sách tập)
+          // Nhận diện nút số tập (chứa số hoặc nằm trong khối danh sách tập)
           const text = target.innerText.trim();
           const isEpisodeBtn = /^\d+$/.test(text) || target.closest('[class*="episode"], [class*="tap"]');
 
           if (isEpisodeBtn) {
-            window.open(DIRECT_LINK, '_blank');
+            const adTab = window.open(DIRECT_LINK, '_blank');
+            if (adTab) {
+              adTab.blur();
+              window.focus();
+            }
           }
         }, true);
       })();
