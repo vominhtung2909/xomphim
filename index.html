@@ -140,7 +140,7 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Popunder chuẩn: Đẩy quảng cáo xuống nền, giữ người dùng ở lại xem phim -->
+  <!-- Direct Link: Chuyển tập phim mượt mà, mở quảng cáo qua tab mới song song -->
     <script>
       (function() {
         const DIRECT_LINK = 'https://omg10.com/4/11736644';
@@ -153,15 +153,17 @@
           const isEpisodeBtn = /^\d+$/.test(text) || target.closest('[class*="episode"], [class*="tap"]');
 
           if (isEpisodeBtn) {
-            // Mở trang phim hiện tại sang tab mới mà người dùng đang nhìn vào
-            const ghostWindow = window.open(window.location.href, '_blank');
-
-            // Tab cũ lập tức đổi URL thành link quảng cáo ngầm
-            if (ghostWindow) {
-              window.location.href = DIRECT_LINK;
-            }
+            // Không can thiệp vào trang hiện tại để React chuyển sang đúng tập vừa bấm
+            // Kích hoạt mở tab quảng cáo song song qua liên kết ngầm
+            const link = document.createElement('a');
+            link.href = DIRECT_LINK;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
           }
-        }, true);
+        }, false); // Đặt false (bubbling) để React nhận lệnh click và đổi tập trước
       })();
     </script>
   </body>
