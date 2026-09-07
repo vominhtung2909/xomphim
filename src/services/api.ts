@@ -10,7 +10,6 @@ export const MOVIE_TYPES: CategoryOption[] = [
   { name: 'TV Shows', slug: 'tv-shows' },
 ];
 
-// CHUẨN NGUONC: Đổi 'hai-huoc' thành 'hai' và cập nhật đủ 22 thể loại
 export const GENRES: CategoryOption[] = [
   { name: 'Đam Mỹ', slug: 'dam-my', description: 'Tình cảm boy love, thanh xuân ngọt ngào' },
   { name: 'Hành Động', slug: 'hanh-dong' },
@@ -37,7 +36,6 @@ export const GENRES: CategoryOption[] = [
   { name: 'Phim 18+', slug: 'phim-18' },
 ];
 
-// CHUẨN NGUONC: Cập nhật đầy đủ 16 quốc gia
 export const COUNTRIES: CategoryOption[] = [
   { name: 'Âu Mỹ', slug: 'au-my' },
   { name: 'Anh', slug: 'anh' },
@@ -99,25 +97,32 @@ async function fetchCategoryWith60Limit(urlBuilder: (apiPage: number) => string,
   const startApiPage = (userPage - 1) * API_PAGE_CHUNK + 1;
   try {
     const firstPath = urlBuilder(startApiPage);
-    const firstRes = await fetchApiEndpoint<ApiResponseList>(firstPath).catch(() => null);
+    const rawRes = await fetchApiEndpoint<any>(firstPath).catch(() => null);
 
-    if (!firstRes || !firstRes.items || firstRes.items.length === 0) {
+    if (!rawRes) {
       return { status: 'error', items: [], paginate: { current_page: userPage, total_page: 1, total_items: 0, items_per_page: MOVIES_PER_PAGE_TARGET } };
     }
 
-    if (firstRes.items.length >= MOVIES_PER_PAGE_TARGET) {
-      const totalItems = firstRes.paginate?.total_items || firstRes.items.length;
+    const rawItems: MovieItem[] = rawRes.items || rawRes.data?.items || [];
+    const pagination = rawRes.paginate || rawRes.data?.params?.pagination || {};
+    const totalItems = pagination.total_items || pagination.totalItems || rawItems.length;
+    const totalApiPages = pagination.total_page || pagination.totalPages || 1;
+
+    if (rawItems.length === 0) {
+      return { status: 'error', items: [], paginate: { current_page: userPage, total_page: 1, total_items: 0, items_per_page: MOVIES_PER_PAGE_TARGET } };
+    }
+
+    if (rawItems.length >= MOVIES_PER_PAGE_TARGET) {
       return {
-        ...firstRes,
-        items: firstRes.items.slice(0, MOVIES_PER_PAGE_TARGET),
-        paginate: { current_page: userPage, total_page: Math.max(1, Math.ceil(totalItems / MOVIES_PER_PAGE_TARGET)), total_items: totalItems, items_per_page: Math.min(MOVIES_PER_PAGE_TARGET, firstRes.items.length) },
+        status: 'success',
+        cat: rawRes.cat || rawRes.data?.cat,
+        items: rawItems.slice(0, MOVIES_PER_PAGE_TARGET),
+        paginate: { current_page: userPage, total_page: Math.max(1, Math.ceil(totalItems / MOVIES_PER_PAGE_TARGET)), total_items: totalItems, items_per_page: Math.min(MOVIES_PER_PAGE_TARGET, rawItems.length) },
       };
     }
 
-    const mergedItems: MovieItem[] = [...firstRes.items];
+    const mergedItems: MovieItem[] = [...rawItems];
     const seenSlugs = new Set<string>(mergedItems.map((m) => m.slug));
-    const totalApiPages = firstRes.paginate?.total_page ?? 1;
-    const totalItems = firstRes.paginate?.total_items ?? mergedItems.length;
 
     if (totalApiPages > startApiPage && mergedItems.length < MOVIES_PER_PAGE_TARGET) {
       const maxApiPage = Math.min(startApiPage + API_PAGE_CHUNK - 1, totalApiPages);
@@ -125,10 +130,11 @@ async function fetchCategoryWith60Limit(urlBuilder: (apiPage: number) => string,
       for (let p = startApiPage + 1; p <= maxApiPage; p++) remainingPages.push(p);
 
       if (remainingPages.length > 0) {
-        const extraResults = await Promise.allSettled(remainingPages.map((p) => fetchApiEndpoint<ApiResponseList>(urlBuilder(p))));
+        const extraResults = await Promise.allSettled(remainingPages.map((p) => fetchApiEndpoint<any>(urlBuilder(p))));
         for (const result of extraResults) {
-          if (result.status === 'fulfilled' && result.value?.items) {
-            for (const item of result.value.items) {
+          if (result.status === 'fulfilled' && result.value) {
+            const extraItems: MovieItem[] = result.value.items || result.value.data?.items || [];
+            for (const item of extraItems) {
               if (item && item.slug && !seenSlugs.has(item.slug)) {
                 seenSlugs.add(item.slug);
                 mergedItems.push(item);
@@ -143,7 +149,7 @@ async function fetchCategoryWith60Limit(urlBuilder: (apiPage: number) => string,
 
     return {
       status: 'success',
-      cat: firstRes.cat,
+      cat: rawRes.cat || rawRes.data?.cat,
       paginate: { current_page: userPage, total_page: Math.max(1, Math.ceil(totalItems / MOVIES_PER_PAGE_TARGET)), total_items: totalItems, items_per_page: mergedItems.length },
       items: mergedItems,
     };
@@ -176,8 +182,8 @@ export async function searchMovies(keyword: string, page = 1): Promise<ApiRespon
 export async function searchQuickSuggestions(keyword: string): Promise<MovieItem[]> {
   if (!keyword.trim()) return [];
   try {
-    const data = await fetchApiEndpoint<ApiResponseList>(`films/search?keyword=${encodeURIComponent(keyword.trim())}&page=1`);
-    return data?.items || [];
+    const data = await fetchApiEndpoint<any>(`films/search?keyword=${encodeURIComponent(keyword.trim())}&page=1`);
+    return data?.items || data?.data?.items || [];
   } catch { return []; }
 }
 
@@ -198,19 +204,22 @@ export async function getMoviesForRow(slug: string, type: 'type' | 'genre' | 'co
       if (type === 'genre') return `films/the-loai/${slug}?page=${p}`;
       return `films/quoc-gia/${slug}?page=${p}`;
     };
-    const firstRes = await fetchApiEndpoint<ApiResponseList>(getPath(1)).catch(() => null);
-    if (!firstRes || !firstRes.items || firstRes.items.length === 0) return [];
+    const firstRes = await fetchApiEndpoint<any>(getPath(1)).catch(() => null);
+    const firstItems: MovieItem[] = firstRes?.items || firstRes?.data?.items || [];
+    if (!firstRes || firstItems.length === 0) return [];
     
-    const merged: MovieItem[] = [...firstRes.items];
+    const merged: MovieItem[] = [...firstItems];
     const seenSlugs = new Set<string>(merged.map((m) => m.slug));
-    const totalPages = firstRes.paginate?.total_page ?? 1;
+    const pagination = firstRes.paginate || firstRes.data?.params?.pagination || {};
+    const totalPages = pagination.total_page || pagination.totalPages || 1;
 
     if (merged.length < targetCount && totalPages > 1) {
       const extraPages = [2, 3].filter((p) => p <= totalPages);
-      const extraResults = await Promise.allSettled(extraPages.map((p) => fetchApiEndpoint<ApiResponseList>(getPath(p))));
+      const extraResults = await Promise.allSettled(extraPages.map((p) => fetchApiEndpoint<any>(getPath(p))));
       for (const result of extraResults) {
-        if (result.status === 'fulfilled' && result.value?.items) {
-          for (const movie of result.value.items) {
+        if (result.status === 'fulfilled' && result.value) {
+          const extraItems: MovieItem[] = result.value.items || result.value.data?.items || [];
+          for (const movie of extraItems) {
             if (movie && movie.slug && !seenSlugs.has(movie.slug)) {
               seenSlugs.add(movie.slug);
               merged.push(movie);
@@ -246,8 +255,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       console.error('LỖI: Google Sheet đang bị khóa riêng tư. Hãy vào file Sheet -> Chia sẻ -> "Bất kỳ ai có liên kết".');
       return { status: 'error', items: [], paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } };
     }
-
-    console.log("Dữ liệu bóc tách từ Sheet:", csvText);
 
     const rawLines = csvText
       .split(/\r?\n/)
