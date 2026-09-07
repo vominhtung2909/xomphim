@@ -10,40 +10,51 @@ export const MOVIE_TYPES: CategoryOption[] = [
   { name: 'TV Shows', slug: 'tv-shows' },
 ];
 
+// CHUẨN NGUONC: Đổi 'hai-huoc' thành 'hai' và cập nhật đủ 22 thể loại
 export const GENRES: CategoryOption[] = [
   { name: 'Đam Mỹ', slug: 'dam-my', description: 'Tình cảm boy love, thanh xuân ngọt ngào' },
   { name: 'Hành Động', slug: 'hanh-dong' },
+  { name: 'Phiêu Lưu', slug: 'phieu-luu' },
+  { name: 'Hoạt Hình', slug: 'hoat-hinh' },
+  { name: 'Hài', slug: 'hai' },
+  { name: 'Hình Sự', slug: 'hinh-su' },
+  { name: 'Tài Liệu', slug: 'tai-lieu' },
+  { name: 'Chính Kịch', slug: 'chinh-kich' },
+  { name: 'Gia Đình', slug: 'gia-dinh' },
+  { name: 'Giả Tưởng', slug: 'gia-tuong' },
+  { name: 'Lịch Sử', slug: 'lich-su' },
+  { name: 'Kinh Dị', slug: 'kinh-di' },
+  { name: 'Nhạc', slug: 'nhac' },
+  { name: 'Bí Ẩn', slug: 'bi-an' },
+  { name: 'Lãng Mạn', slug: 'lang-man' },
+  { name: 'Khoa Học Viễn Tưởng', slug: 'khoa-hoc-vien-tuong' },
+  { name: 'Gây Cấn', slug: 'gay-can' },
+  { name: 'Chiến Tranh', slug: 'chien-tranh' },
+  { name: 'Tâm Lý', slug: 'tam-ly' },
   { name: 'Tình Cảm', slug: 'tinh-cam' },
   { name: 'Cổ Trang', slug: 'co-trang' },
-  { name: 'Tâm Lý', slug: 'tam-ly' },
-  { name: 'Hài Hước', slug: 'hai-huoc' },
-  { name: 'Võ Thuật', slug: 'vo-thuat' },
-  { name: 'Viễn Tưởng', slug: 'vien-tuong' },
-  { name: 'Phiêu Lưu', slug: 'phieu-luu' },
-  { name: 'Kinh Dị', slug: 'kinh-di' },
-  { name: 'Khoa Học', slug: 'khoa-hoc' },
-  { name: 'Thần Thoại', slug: 'than-thoai' },
-  { name: 'Chính Kịch', slug: 'chinh-kich' },
-  { name: 'Bí Ẩn', slug: 'bi-an' },
-  { name: 'Học Đường', slug: 'hoc-duong' },
-  { name: 'Âm Nhạc', slug: 'am-nhac' },
-  { name: 'Gia Đình', slug: 'gia-dinh' },
-  { name: 'Tài Liệu', slug: 'tai-lieu' },
-  { name: 'Chiến Tranh', slug: 'chien-tranh' },
-  { name: 'Thể Thao', slug: 'the-thao' },
-  { name: 'Kinh Điển', slug: 'kinh-dien' },
+  { name: 'Miền Tây', slug: 'mien-tay' },
+  { name: 'Phim 18+', slug: 'phim-18' },
 ];
 
+// CHUẨN NGUONC: Cập nhật đầy đủ 16 quốc gia
 export const COUNTRIES: CategoryOption[] = [
+  { name: 'Âu Mỹ', slug: 'au-my' },
+  { name: 'Anh', slug: 'anh' },
   { name: 'Trung Quốc', slug: 'trung-quoc' },
+  { name: 'Indonesia', slug: 'indonesia' },
+  { name: 'Việt Nam', slug: 'viet-nam' },
+  { name: 'Pháp', slug: 'phap' },
+  { name: 'Hồng Kông', slug: 'hong-kong' },
   { name: 'Hàn Quốc', slug: 'han-quoc' },
   { name: 'Nhật Bản', slug: 'nhat-ban' },
-  { name: 'Âu Mỹ', slug: 'au-my' },
   { name: 'Thái Lan', slug: 'thai-lan' },
-  { name: 'Việt Nam', slug: 'viet-nam' },
   { name: 'Đài Loan', slug: 'dai-loan' },
-  { name: 'Hồng Kông', slug: 'hong-kong' },
+  { name: 'Nga', slug: 'nga' },
+  { name: 'Hà Lan', slug: 'ha-lan' },
+  { name: 'Philippines', slug: 'philippines' },
   { name: 'Ấn Độ', slug: 'an-do' },
+  { name: 'Quốc gia khác', slug: 'quoc-gia-khac' },
 ];
 
 const cache = new Map<string, { timestamp: number; data: unknown }>();
@@ -221,7 +232,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
     let csvText = '';
     const cacheBusterUrl = `${GOOGLE_SHEET_CSV_URL}&t=${Date.now()}`;
     
-    // Thử gọi trực tiếp, nếu lỗi CORS sẽ dùng Proxy tự động
     try {
       const sheetRes = await fetch(cacheBusterUrl);
       if (!sheetRes.ok) throw new Error('CORS Error');
@@ -232,7 +242,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
       csvText = await proxyRes.text();
     }
 
-    // Nếu Google Sheet chưa cấp quyền chia sẻ (bắt đăng nhập)
     if (csvText.toLowerCase().includes('<!doctype html>')) {
       console.error('LỖI: Google Sheet đang bị khóa riêng tư. Hãy vào file Sheet -> Chia sẻ -> "Bất kỳ ai có liên kết".');
       return { status: 'error', items: [], paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } };
