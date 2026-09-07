@@ -35,54 +35,76 @@ import {
   Award,
   Check,
   ChevronRight,
+  Swords,
+  Crosshair,
+  Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { COUNTRIES, GENRES, MOVIE_TYPES, searchQuickSuggestions } from '../services/api';
+import { COUNTRIES as API_COUNTRIES, GENRES as API_GENRES, MOVIE_TYPES, searchQuickSuggestions } from '../services/api';
 import { MovieItem } from '../types/movie';
 
-// Metadata and visual styling for each genre
+// Metadata and visual styling for each genre - CHUẨN NGUONC (22 thể loại)
 const GENRE_LIST_DATA: Record<
   string,
-  { icon: React.ComponentType<{ className?: string }>; tagline: string; color: string }
+  { name: string; icon: React.ComponentType<{ className?: string }>; tagline: string; color: string }
 > = {
-  'dam-my': { icon: Sparkles, tagline: 'Tình cảm boy love, thanh xuân', color: 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30' },
-  'hanh-dong': { icon: Flame, tagline: 'Hành động, gay cấn & kịch tính', color: 'text-red-400 bg-red-500/10 border-red-500/30' },
-  'tinh-cam': { icon: Heart, tagline: 'Lãng mạn, ngọt ngào, tình yêu', color: 'text-pink-400 bg-pink-500/10 border-pink-500/30' },
-  'co-trang': { icon: Crown, tagline: 'Kiếm hiệp, cung đấu, lịch sử', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
-  'tam-ly': { icon: Brain, tagline: 'Sâu sắc, lắng đọng cảm xúc', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
-  'hai-huoc': { icon: Smile, tagline: 'Vui nhộn, hóm hỉnh, giải trí', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30' },
-  'vo-thuat': { icon: Shield, tagline: 'Kungfu, võ thuật đỉnh cao', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
-  'vien-tuong': { icon: Rocket, tagline: 'Sci-Fi, vũ trụ & tương lai', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' },
-  'phieu-luu': { icon: Compass, tagline: 'Khám phá, thám hiểm mạo hiểm', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-  'kinh-di': { icon: Ghost, tagline: 'Rùng rợn, giật gân, hồi hộp', color: 'text-violet-400 bg-violet-500/10 border-violet-500/30' },
-  'khoa-hoc': { icon: Atom, tagline: 'Khoa học, công nghệ hiện đại', color: 'text-teal-400 bg-teal-500/10 border-teal-500/30' },
-  'than-thoai': { icon: Wand2, tagline: 'Tiên hiệp, phép thuật huyền bí', color: 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30' },
-  'chinh-kich': { icon: Layers, tagline: 'Kịch tính, đời thực, nhân văn', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' },
-  'bi-an': { icon: Eye, tagline: 'Trinh thám, phá án, bí ẩn', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
-  'hoc-duong': { icon: GraduationCap, tagline: 'Thanh xuân, tuổi trẻ học đường', color: 'text-sky-400 bg-sky-500/10 border-sky-500/30' },
-  'am-nhac': { icon: Music, tagline: 'Âm nhạc, giai điệu, thần tượng', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
-  'gia-dinh': { icon: Users, tagline: 'Tình thân, gắn kết gia đình', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-  'tai-lieu': { icon: Video, tagline: 'Tư liệu, ký sự, đời thực', color: 'text-slate-400 bg-slate-500/10 border-slate-500/30' },
-  'chien-tranh': { icon: Target, tagline: 'Chiến tranh, lịch sử hào hùng', color: 'text-red-400 bg-red-500/10 border-red-500/30' },
-  'the-thao': { icon: Trophy, tagline: 'Thể thao, nhiệt huyết thi đấu', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
-  'kinh-dien': { icon: Award, tagline: 'Tác phẩm bất hủ vượt thời gian', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30' },
+  'hanh-dong': { name: 'Hành Động', icon: Flame, tagline: 'Hành động, gay cấn & kịch tính', color: 'text-red-400 bg-red-500/10 border-red-500/30' },
+  'phieu-luu': { name: 'Phiêu Lưu', icon: Compass, tagline: 'Khám phá, thám hiểm mạo hiểm', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+  'hoat-hinh': { name: 'Hoạt Hình', icon: Sparkles, tagline: 'Hoạt hình, anime chọn lọc', color: 'text-pink-400 bg-pink-500/10 border-pink-500/30' },
+  'hai': { name: 'Hài', icon: Smile, tagline: 'Vui nhộn, hóm hỉnh, giải trí', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30' },
+  'hinh-su': { name: 'Hình Sự', icon: Shield, tagline: 'Phá án, tội phạm điều tra', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
+  'tai-lieu': { name: 'Tài Liệu', icon: Video, tagline: 'Tư liệu đời thực khám phá', color: 'text-slate-400 bg-slate-500/10 border-slate-500/30' },
+  'chinh-kich': { name: 'Chính Kịch', icon: Layers, tagline: 'Kịch tính, đời thực, nhân văn', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' },
+  'gia-dinh': { name: 'Gia Đình', icon: Users, tagline: 'Tình thân, gắn kết gia đình', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+  'gia-tuong': { name: 'Giả Tưởng', icon: Wand2, tagline: 'Thế giới huyền bí, kỳ ảo', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
+  'lich-su': { name: 'Lịch Sử', icon: Award, tagline: 'Tái hiện dấu ấn lịch sử', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+  'kinh-di': { name: 'Kinh Dị', icon: Ghost, tagline: 'Rùng rợn, giật gân, hồi hộp', color: 'text-violet-400 bg-violet-500/10 border-violet-500/30' },
+  'nhac': { name: 'Nhạc', icon: Music, tagline: 'Giai điệu & nghệ thuật', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
+  'bi-an': { name: 'Bí Ẩn', icon: Eye, tagline: 'Trinh thám, bí ẩn khó đoán', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
+  'lang-man': { name: 'Lãng Mạn', icon: Heart, tagline: 'Lãng mạn, ngọt ngào tình yêu', color: 'text-pink-400 bg-pink-500/10 border-pink-500/30' },
+  'khoa-hoc-vien-tuong': { name: 'Khoa Học Viễn Tưởng', icon: Rocket, tagline: 'Sci-Fi, vũ trụ & tương lai', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' },
+  'gay-can': { name: 'Gây Cấn', icon: Target, tagline: 'Hồi hộp từng phút giây', color: 'text-red-400 bg-red-500/10 border-red-500/30' },
+  'chien-tranh': { name: 'Chiến Tranh', icon: Swords, tagline: 'Khói lửa chiến trường khốc liệt', color: 'text-red-500 bg-red-500/10 border-red-500/30' },
+  'tam-ly': { name: 'Tâm Lý', icon: Brain, tagline: 'Sâu sắc, lắng đọng cảm xúc', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
+  'tinh-cam': { name: 'Tình Cảm', icon: Heart, tagline: 'Tình yêu đôi lứa sâu đậm', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
+  'co-trang': { name: 'Cổ Trang', icon: Crown, tagline: 'Kiếm hiệp, cung đấu, lịch sử', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+  'mien-tay': { name: 'Miền Tây', icon: Crosshair, tagline: 'Miền viễn tây kinh điển', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' },
+  'phim-18': { name: 'Phim 18+', icon: Lock, tagline: 'Nội dung dành cho người lớn', color: 'text-red-400 bg-red-500/10 border-red-500/30' },
 };
 
-// Metadata for countries
+// Metadata for countries - CHUẨN NGUONC (16 quốc gia)
 const COUNTRY_LIST_DATA: Record<
   string,
-  { tagline: string; color: string; highlight: string }
+  { name: string; tagline: string; color: string; highlight: string }
 > = {
-  'trung-quoc': { tagline: 'C-Drama • Hoa Ngữ • Cổ Trang', color: 'text-red-400 bg-red-500/10 border-red-500/30', highlight: 'from-red-600 to-rose-600' },
-  'han-quoc': { tagline: 'K-Drama • Hallyu • Tình Cảm', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30', highlight: 'from-blue-600 to-cyan-600' },
-  'nhat-ban': { tagline: 'Anime • J-Drama • Live Action', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30', highlight: 'from-rose-600 to-pink-600' },
-  'au-my': { tagline: 'Hollywood • US-UK • Bom Tấn', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30', highlight: 'from-indigo-600 to-purple-600' },
-  'thai-lan': { tagline: 'T-Drama • Lakorn • Hài Hước', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30', highlight: 'from-amber-600 to-orange-600' },
-  'viet-nam': { tagline: 'Phim Chiếu Rạp • Điện Ảnh Việt', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30', highlight: 'from-yellow-600 to-amber-600' },
-  'dai-loan': { tagline: 'Phim Thần Tượng • Tâm Lý', color: 'text-teal-400 bg-teal-500/10 border-teal-500/30', highlight: 'from-teal-600 to-emerald-600' },
-  'hong-kong': { tagline: 'TVB • Võ Thuật • Kinh Điển', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30', highlight: 'from-orange-600 to-red-600' },
-  'an-do': { tagline: 'Bollywood • Ca Vũ • Kịch Tính', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30', highlight: 'from-purple-600 to-pink-600' },
+  'au-my': { name: 'Âu Mỹ', tagline: 'Hollywood • US-UK • Bom Tấn', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30', highlight: 'from-indigo-600 to-purple-600' },
+  'anh': { name: 'Anh', tagline: 'Phim truyền hình Anh Quốc', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30', highlight: 'from-blue-600 to-sky-600' },
+  'trung-quoc': { name: 'Trung Quốc', tagline: 'C-Drama • Hoa Ngữ • Cổ Trang', color: 'text-red-400 bg-red-500/10 border-red-500/30', highlight: 'from-red-600 to-rose-600' },
+  'indonesia': { name: 'Indonesia', tagline: 'Điện ảnh Đông Nam Á', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30', highlight: 'from-emerald-600 to-teal-600' },
+  'viet-nam': { name: 'Việt Nam', tagline: 'Phim Chiếu Rạp • Điện Ảnh Việt', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30', highlight: 'from-yellow-600 to-amber-600' },
+  'phap': { name: 'Pháp', tagline: 'Điện ảnh lãng mạn Châu Âu', color: 'text-sky-400 bg-sky-500/10 border-sky-500/30', highlight: 'from-sky-600 to-blue-600' },
+  'hong-kong': { name: 'Hồng Kông', tagline: 'TVB • Võ Thuật • Kinh Điển', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30', highlight: 'from-orange-600 to-red-600' },
+  'han-quoc': { name: 'Hàn Quốc', tagline: 'K-Drama • Hallyu • Tình Cảm', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30', highlight: 'from-blue-600 to-cyan-600' },
+  'nhat-ban': { name: 'Nhật Bản', tagline: 'Anime • J-Drama • Live Action', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30', highlight: 'from-rose-600 to-pink-600' },
+  'thai-lan': { name: 'Thái Lan', tagline: 'T-Drama • Lakorn • Hài Hước', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30', highlight: 'from-amber-600 to-orange-600' },
+  'dai-loan': { name: 'Đài Loan', tagline: 'Phim Thần Tượng • Tâm Lý', color: 'text-teal-400 bg-teal-500/10 border-teal-500/30', highlight: 'from-teal-600 to-emerald-600' },
+  'nga': { name: 'Nga', tagline: 'Điện ảnh Nga đặc sắc', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30', highlight: 'from-cyan-600 to-blue-600' },
+  'ha-lan': { name: 'Hà Lan', tagline: 'Phim Châu Âu chọn lọc', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30', highlight: 'from-orange-600 to-amber-600' },
+  'philippines': { name: 'Philippines', tagline: 'Phim truyền hình lôi cuốn', color: 'text-violet-400 bg-violet-500/10 border-violet-500/30', highlight: 'from-violet-600 to-purple-600' },
+  'an-do': { name: 'Ấn Độ', tagline: 'Bollywood • Ca Vũ • Kịch Tính', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30', highlight: 'from-purple-600 to-pink-600' },
+  'quoc-gia-khac': { name: 'Quốc gia khác', tagline: 'Các nền điện ảnh khác', color: 'text-slate-400 bg-slate-500/10 border-slate-500/30', highlight: 'from-slate-600 to-slate-700' },
 };
+
+// Chuẩn hóa danh sách lấy từ GENRE_LIST_DATA để luôn đầy đủ mục kể cả khi API export danh sách cũ
+const GENRES = Object.entries(GENRE_LIST_DATA).map(([slug, item]) => ({
+  slug,
+  name: item.name
+}));
+
+const COUNTRIES = Object.entries(COUNTRY_LIST_DATA).map(([slug, item]) => ({
+  slug,
+  name: item.name
+}));
 
 interface NavbarProps {
   currentView: string;
@@ -337,7 +359,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
 
                 {isGenreOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-[460px] max-h-[460px] overflow-y-auto custom-scrollbar glass-panel rounded-2xl shadow-2xl p-3 z-50 border border-white/15 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full left-0 mt-2 w-[480px] max-h-[460px] overflow-y-auto custom-scrollbar glass-panel rounded-2xl shadow-2xl p-3 z-50 border border-white/15 animate-in fade-in slide-in-from-top-2">
                     <div className="px-2 py-1.5 text-xs font-bold text-slate-300 border-b border-white/10 mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Compass className="w-4 h-4 text-purple-400" />
@@ -348,6 +370,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="grid grid-cols-2 gap-1.5">
                       {GENRES.map((g) => {
                         const info = GENRE_LIST_DATA[g.slug] || {
+                          name: g.name,
                           icon: Film,
                           tagline: 'Khám phá phim hay',
                           color: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
@@ -435,6 +458,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="space-y-1">
                       {COUNTRIES.map((c) => {
                         const info = COUNTRY_LIST_DATA[c.slug] || {
+                          name: c.name,
                           tagline: 'Điện ảnh đặc sắc',
                           color: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
                           highlight: 'from-blue-600 to-indigo-600',
@@ -492,7 +516,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </nav>
 
-            {/* RIGHT SECTION: Search + Bookmark (Always 100% visible on right edge without overflow) */}
+            {/* RIGHT SECTION: Search + Bookmark */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-nowrap">
               
               {/* Inline Search Bar (Visible on Landscape Tablet & Desktop: >= 1024px) */}
@@ -587,7 +611,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Search className="w-4 h-4" />
               </button>
 
-              {/* Bookmark / Saved Movies Icon Button (ALWAYS clearly visible on right edge without overflow) */}
+              {/* Bookmark / Saved Movies Icon Button */}
               <button
                 id="btn-favorites"
                 onClick={onOpenFavorites}
@@ -617,7 +641,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[1200] bg-black/95 backdrop-blur-xl flex flex-col p-4 sm:p-6"
           >
-            {/* Search Top Bar */}
             <div className="flex items-center gap-2.5 pb-3 border-b border-white/15">
               <div className="relative flex-1 flex items-center">
                 <Search className="w-5 h-5 text-purple-400 absolute left-3 pointer-events-none" />
@@ -653,7 +676,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            {/* Quick Action when hitting Enter */}
             {searchQuery.trim() && (
               <button
                 onClick={() => handleSearchSubmit()}
@@ -667,7 +689,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Search Suggestions List */}
             <div className="flex-1 overflow-y-auto mt-3 divide-y divide-white/5">
               {isSearching && (
                 <div className="py-6 text-center text-xs text-purple-400 flex items-center justify-center gap-2">
@@ -732,7 +753,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       <AnimatePresence>
         {isMobileDrawerOpen && (
           <>
-            {/* Backdrop Blur Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -742,7 +762,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="fixed inset-0 z-[1100] bg-black/80 backdrop-blur-sm lg:hidden"
             />
 
-            {/* Side Drawer Body */}
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
@@ -750,7 +769,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               className="fixed inset-y-0 left-0 z-[1110] w-[80vw] max-w-[340px] bg-[#0c0c10] border-r border-white/15 shadow-2xl flex flex-col lg:hidden overflow-hidden"
             >
-              {/* Drawer Top Header */}
               <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl overflow-hidden bg-black p-0.5 shadow-md border border-purple-500/40 shrink-0 flex items-center justify-center">
@@ -774,9 +792,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
 
-              {/* Drawer Scrollable Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                
                 {/* 1. Quick Access: Saved & History */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -804,13 +820,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                 </div>
 
-                {/* 2. Main Categories (Trang Chủ, Phim Bộ, Phim Lẻ, Hoạt Hình & Anime, TV Shows) */}
+                {/* 2. Main Categories */}
                 <div className="space-y-1">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-2 mb-1">
                     Danh Mục Chính
                   </p>
 
-                  {/* Trang Chủ */}
                   <button
                     onClick={() => {
                       onNavigateHome();
@@ -826,7 +841,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Trang Chủ</span>
                   </button>
 
-                  {/* Phim Bộ */}
                   <button
                     onClick={() => {
                       onSelectCategory('type', 'phim-bo', 'Phim Bộ');
@@ -842,7 +856,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Phim Bộ</span>
                   </button>
 
-                  {/* Phim Lẻ */}
                   <button
                     onClick={() => {
                       onSelectCategory('type', 'phim-le', 'Phim Lẻ');
@@ -858,7 +871,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Phim Lẻ</span>
                   </button>
 
-                  {/* Hoạt Hình & Anime */}
                   <button
                     onClick={() => {
                       onSelectCategory('type', 'hoat-hinh', 'Hoạt Hình & Anime');
@@ -874,7 +886,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Hoạt Hình & Anime</span>
                   </button>
 
-                  {/* TV Shows */}
                   <button
                     onClick={() => {
                       onSelectCategory('type', 'tv-shows', 'TV Shows');
@@ -891,7 +902,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
                 </div>
 
-                {/* 3. Khám phá Thể Loại (Dạng Danh Sách Chi Tiết) */}
+                {/* 3. Khám phá Thể Loại (Đủ 22 thể loại NguonC) */}
                 <div className="pt-2 border-t border-white/10">
                   <button
                     onClick={() => setDrawerGenreOpen(!drawerGenreOpen)}
@@ -923,6 +934,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-1.5 space-y-1 max-h-[380px] overflow-y-auto custom-scrollbar">
                           {GENRES.map((g) => {
                             const info = GENRE_LIST_DATA[g.slug] || {
+                              name: g.name,
                               icon: Film,
                               tagline: 'Khám phá phim hay',
                               color: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
@@ -984,7 +996,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </AnimatePresence>
                 </div>
 
-                {/* 4. Khám phá Quốc Gia (Dạng Danh Sách Chi Tiết) */}
+                {/* 4. Khám phá Quốc Gia (Đủ 16 quốc gia NguonC) */}
                 <div className="pt-2 border-t border-white/10">
                   <button
                     onClick={() => setDrawerCountryOpen(!drawerCountryOpen)}
@@ -1016,6 +1028,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-1.5 space-y-1 max-h-[340px] overflow-y-auto custom-scrollbar">
                           {COUNTRIES.map((c) => {
                             const info = COUNTRY_LIST_DATA[c.slug] || {
+                              name: c.name,
                               tagline: 'Điện ảnh đặc sắc',
                               color: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
                               highlight: 'from-blue-600 to-indigo-600',
