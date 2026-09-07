@@ -68,27 +68,29 @@ async function fetchApiEndpoint<T>(pathClean: string): Promise<T> {
 
   const directUrl = `${API_BASE_URL}/${cleanPath}`;
   const proxyUrl = `/api-nguonc/${cleanPath}`;
-  const corsFallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`;
+  const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
 
-  const candidateUrls = [proxyUrl, directUrl, corsFallbackUrl];
+  const candidateUrls = [proxyUrl, directUrl, corsProxyUrl];
   let lastError: unknown = null;
 
   for (const url of candidateUrls) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
       clearTimeout(timeoutId);
 
       if (res.ok) {
         const text = await res.text();
-        if (text && (text.startsWith('{') || text.startsWith('['))) {
+        if (text && (text.trim().startsWith('{') || text.trim().startsWith('['))) {
           const parsed = JSON.parse(text);
           cache.set(cacheKey, { timestamp: Date.now(), data: parsed });
           return parsed as T;
         }
       }
-    } catch (err) { lastError = err; }
+    } catch (err) {
+      lastError = err;
+    }
   }
   throw lastError || new Error(`Lỗi kết nối API: ${cleanPath}`);
 }
@@ -158,18 +160,22 @@ async function fetchCategoryWith60Limit(urlBuilder: (apiPage: number) => string,
   }
 }
 
-export async function getNewMovies(page = 1): Promise<ApiResponseList> { return fetchCategoryWith60Limit((p) => `films/phim-moi-cap-nhat?page=${p}`, page); }
+export async function getNewMovies(page = 1): Promise<ApiResponseList> { 
+  return fetchCategoryWith60Limit((p) => `films/phim-moi-cap-nhat?page=${p}`, page); 
+}
 
 export async function getMoviesByType(typeSlug: string, page = 1): Promise<ApiResponseList> {
   if (typeSlug === 'phim-moi-cap-nhat') return getNewMovies(page);
   return fetchCategoryWith60Limit((p) => `films/danh-sach/${typeSlug}?page=${p}`, page);
 }
 
+// Chuẩn theo ảnh tài liệu NguonC: films/the-loai/{slug}
 export async function getMoviesByGenre(genreSlug: string, page = 1): Promise<ApiResponseList> {
   if (genreSlug === 'dam-my') return getBLMoviesFromSheet(page);
   return fetchCategoryWith60Limit((p) => `films/the-loai/${genreSlug}?page=${p}`, page);
 }
 
+// Chuẩn theo ảnh tài liệu NguonC: films/quoc-gia/{slug}
 export async function getMoviesByCountry(countrySlug: string, page = 1): Promise<ApiResponseList> {
   return fetchCategoryWith60Limit((p) => `films/quoc-gia/${countrySlug}?page=${p}`, page);
 }
@@ -252,7 +258,6 @@ export async function getBLMoviesFromSheet(page: number = 1): Promise<ApiRespons
     }
 
     if (csvText.toLowerCase().includes('<!doctype html>')) {
-      console.error('LỖI: Google Sheet đang bị khóa riêng tư. Hãy vào file Sheet -> Chia sẻ -> "Bất kỳ ai có liên kết".');
       return { status: 'error', items: [], paginate: { current_page: 1, total_page: 1, total_items: 0, items_per_page: 24 } };
     }
 
